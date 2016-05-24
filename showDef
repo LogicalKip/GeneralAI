@@ -1,0 +1,88 @@
+#!/bin/bash
+
+#TODO Monte_Carlo_tree_search : que faire ?, special char (À in the first seds, for example, or typical é), disambiguation pages, no such article error, what about e.g/i.e (no space after i) ?, différence entre Monte_Carlo_tree_search et monte_Carlo_tree_search, apostrophe=ok?, no word given or only language etc, avoid double dl, clean code, english/pain and fr/simple ends first sentence with not-letter char therefore undetected, test fr napoleon
+#there may be differences in runs with the same parameters
+# ampersand not correct (ex : duck dynasty article)
+# (listen to pronounciation) : ex : fr Dieu
+# latin as a subtitle (ex : fr chat)
+
+#getParsedArticle(word, language="en")
+function getParsedArticle {
+	local word=$1	
+	local lang="en"
+	
+	if [ $# == 2 ];  then
+		lang=$2
+	fi	
+	
+	local query="api.php?action=query&prop=extracts&format=xml&exintro=&explaintext=&titles=$word&redirects="
+	local wikiUrl="http://$lang.wikipedia.org/w/$query"
+	wget --quiet "$wikiUrl" --output-document=$word
+
+
+	local definition=`cat $word`
+	definition=`echo $definition | sed -e "s/<[^>]*>//g"`				    		#remove html markups 	<a href=""> Still visible </a>
+	definition=`echo $definition | sed -e "s/\[[0-9]*\]//g"`						#remove notes 			[1]
+	definition=`echo $definition | sed -e "s/&#160;//g"`							#remove &#160; 	
+	definition=`echo $definition | sed -e "s/&quot;/'/g"`							#replace html codes
+
+	rm $word
+
+	echo $definition
+}
+
+# findArticle(word, language="en") sets articleFound to true or false
+function findArticle {
+	local word=$1	
+	local lang="en"
+	
+	if [ $# == 2 ];  then
+		lang=$2
+	fi
+
+	local definition=$(getParsedArticle $word $lang)
+
+	if [ "$definition" == "" ]; then
+		articleFound=false
+	else
+		articleFound=true
+	fi
+}
+
+
+language="undefined"
+
+if [ $1 == "fr" ] || [ $1 == "simple" ] || [ $1 == "en" ]; then
+	language=$1
+	shift
+fi
+
+PARAM=$1
+shift
+
+for nextWord in "$@" 
+do
+	PARAM="$PARAM""_$nextWord"
+done
+
+
+if [ "$language" == "undefined" ]; then
+	findArticle $PARAM "simple" 
+	if [ $articleFound == true ]; then
+		language="simple"
+	else
+		language="en"
+	fi
+fi
+
+
+definition=$(getParsedArticle $PARAM $language)
+
+definition=`echo $definition | sed -r -e "s/(([^\.]*\. [^A-Z])*[^\.]*[a-z]\.) [A-Z].*/\1/g"` 
+																				#get first sentence
+																				#to avoid 'the yeti, lit. "mountain man"' and 'J. R. R. Tolkien', which both 																					
+																				#have non-final dots, the sentence must end with 'lowercase dot space uppercase' 
+																				#FIXME fr Terminator has a sentence that ends with a year, so doesn't work 
+echo $definition
+
+
