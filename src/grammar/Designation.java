@@ -3,7 +3,7 @@ package grammar;
 
 /**
  * A name that refer to a concept
- * Ex: "devour" to refer to the concept of eating, or "kitty" to refer to the concept of cat.
+ * Ex: "kitty" to refer to the concept of cat. There wouldn't be a "kitties" one though, only with the base form, to make it simpler.
  * @author charles
  *
  */
@@ -34,4 +34,5 @@ public class Designation {
 	public String toString() {
 		return value + " -> " + designatedConcept.toString();
 	}
+
 }

@@ -1,19 +1,26 @@
 package grammar;
 
 /**
- * The actual entity concept possibly referred to by several designations.
- * E.g The concept of a cat.
+ * Think of {@link EntityConcept} objects as classes and of {@link Entity} objects as instances of classes.
+ * E.g : Mr snuggles, a specific cat with a white spot on the head, is an {@link Entity}. For the concept of a cat (mammal, small, etc), see {@link EntityConcept}
  * @author charles
  *
  */
-public class Entity extends AbstractEntity {
-	private Gender gender;
+public class Entity implements IEntity {
+	private EntityConcept referredConcept;
 
-	public Gender getGender() {
-		return gender;
+	public EntityConcept getReferredConcept() {
+		return referredConcept;
 	}
 
-	public void setGender(Gender gender) {
-		this.gender = gender;
+	public Entity(EntityConcept referredConcept) {
+		super();
+		this.referredConcept = referredConcept;
 	}
+
+	public void setReferredConcept(EntityConcept referredConcept) {
+		this.referredConcept = referredConcept;
+	}
+	
+	//TODO private List<Adjective> characteristics
 }

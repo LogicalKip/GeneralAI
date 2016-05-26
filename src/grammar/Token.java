@@ -6,7 +6,7 @@ public class Token {
 		EPSILON,
 		COMMON_WORD,
 		QUESTION_MARK
-	};
+	}
 
 	public final TokenType token;
 	public final String sequence;

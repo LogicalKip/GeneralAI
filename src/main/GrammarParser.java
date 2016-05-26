@@ -6,13 +6,18 @@ import java.util.List;
 import exceptions.NotEnoughKnowledgeException;
 import exceptions.ParserException;
 import exceptions.WrongGrammarRuleException;
-import grammar.AbstractEntity;
+import grammar.AbstractEntityConcept;
 import grammar.AbstractVerb;
 import grammar.DeclarativeSentence;
+import grammar.DefiniteDeterminer;
 import grammar.Designation;
 import grammar.Determiner;
 import grammar.Entity;
-import grammar.Gender;
+import grammar.EntityConcept;
+import grammar.EntityInterrogative;
+import grammar.IEntity;
+import grammar.IndefiniteDeterminer;
+import grammar.NounDesignation;
 import grammar.Order;
 import grammar.Sentence;
 import grammar.Token;
@@ -22,6 +27,8 @@ import grammar.Verb;
 import grammar.VerbInterrogative;
 import grammar.VerbMeaning;
 import simplenlg.features.Tense;
+import simplenlg.framework.LexicalCategory;
+import simplenlg.lexicon.XMLLexicon;
 
 public class GrammarParser {
 
@@ -29,11 +36,17 @@ public class GrammarParser {
 	private Token lookAhead;
 	private final List<Designation> actualAIVocabulary;
 	private final List<Designation> newVocabulary;
+	private final List<Entity> actualAIKnownEntities;
+	private final List<Entity> newEntities;
+	private final XMLLexicon lexicon;
 
 
-	public GrammarParser(final List<Designation> AIvocabulary) {
+	public GrammarParser(final List<Designation> AIvocabulary, final List<Entity> AIEntities, final XMLLexicon lexicon) {
 		this.actualAIVocabulary = AIvocabulary;
+		this.actualAIKnownEntities = AIEntities;
 		this.newVocabulary = new LinkedList<Designation>();
+		this.newEntities = new LinkedList<Entity>();
+		this.lexicon = lexicon;
 	}
 
 
@@ -113,9 +126,9 @@ public class GrammarParser {
 	private DeclarativeSentence declarativeSentence() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
 		DeclarativeSentence res;
 
-		AbstractEntity subject = nounPhrase();
+		IEntity subject = nounPhrase();
 		AbstractVerb   verb    = verb();
-		AbstractEntity object  = nounPhrase();
+		IEntity object  = nounPhrase();
 
 		boolean interrogative = (lookAhead.token == TokenType.QUESTION_MARK);
 		if (interrogative) {
@@ -150,6 +163,7 @@ public class GrammarParser {
 	 * @return
 	 */
 	private Order order() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
+		Order res;
 		if (lookAhead.token == TokenType.COMMON_WORD && 
 				lookAhead.sequence.matches(getKnownVerbsRegex())) {
 			String verbSequence = lookAhead.sequence;
@@ -169,51 +183,64 @@ public class GrammarParser {
 				objectSequence = lookAhead.sequence;
 				nextToken();
 			} 
-			return new Order(designatedVerbalConcept, objectSequence);
+			res = new Order(designatedVerbalConcept, objectSequence);
 		} else {
 			throw new WrongGrammarRuleException();
 		}
-
+		return res;
 	}
 
 	/**
-	 * nounPhrase -> determiner noun | noun
+	 * nounPhrase -> determiner noun | interrogativeEntity
+	 * 
+	 * E.g : a cat | what
+	 * E.g : the what | who
 	 */
-	private AbstractEntity nounPhrase() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
-		AbstractEntity res;
-
+	private IEntity nounPhrase() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
+		IEntity res;
+		
 		try {
-			Gender determinerGender = determiner();
-			res = noun();
-			if (res instanceof Entity) {
-				((Entity) res).setGender(determinerGender);
-			}
+			Determiner determiner = determiner();
+			res = noun(determiner);
 		} catch (WrongGrammarRuleException e) {
-			res = noun();
+			res = interrogativeEntity();
 		}
 
 		return res;
 	}
-
-	private Gender determiner() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
-		if (lookAhead.sequence.matches(getDeterminerRegex())) {
-			Determiner determiner = (Determiner) AI.getFirstConceptDesignatedBy(actualAIVocabulary, lookAhead.sequence, Determiner.class);
-			Gender determinerGender = determiner.getGender();
+	
+	private EntityInterrogative interrogativeEntity() throws WrongGrammarRuleException {
+		EntityInterrogative res;
+		
+		if (lookAhead.token == TokenType.COMMON_WORD) {
+			res = processCorrespondingEntityInterrogative();
 			nextToken();
-			return determinerGender;
 		} else {
 			throw new WrongGrammarRuleException();
 		}
+		
+		return res;
+	}
+
+	private Determiner determiner() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
+		Determiner determiner;
+		if (lookAhead.sequence.matches(getDeterminerRegex())) {
+			determiner = (Determiner) AI.getFirstConceptDesignatedBy(actualAIVocabulary, lookAhead.sequence, Determiner.class);
+			nextToken();
+		} else {
+			throw new WrongGrammarRuleException();
+		}
+		return determiner;
 	}
 
 	/**
 	 * noun -> WORD
 	 * @return
 	 */
-	private AbstractEntity noun() throws WrongGrammarRuleException {
-		AbstractEntity res;
+	private IEntity noun(Determiner determiner) throws WrongGrammarRuleException {
+		IEntity res;
 		if (lookAhead.token == TokenType.COMMON_WORD) {
-			res = processCorrespondingEntity();
+			res = processCorrespondingEntity(determiner);
 			nextToken();
 		} else {
 			throw new WrongGrammarRuleException();
@@ -227,26 +254,74 @@ public class GrammarParser {
 	/***************************************/
 	/***************************************/
 
+	private boolean isKnownNoun(String word) {
+		return lexicon.hasWordFromVariant(word, LexicalCategory.NOUN);
+	}
+
+	private boolean isKnownVerb(String word) {
+		return lexicon.hasWordFromVariant(word, LexicalCategory.VERB);
+	}
+
+	/**
+	 * More or less returns the stem of the given word
+	 */
+	private String getBase(String word, LexicalCategory category) {
+		return lexicon.getWordFromVariant(word, category).getBaseForm();
+	}
+
 	public List<Designation> getNewVocabulary() {
 		return newVocabulary;
 	}
 
 
-	
+
 	/**
 	 * Returns the concept corresponding to the current token (it is implied that the current token represents an entity) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
 	 */
-	private AbstractEntity processCorrespondingEntity() {
-		AbstractEntity res, designatedConcept = (AbstractEntity) AI.getFirstConceptDesignatedBy(actualAIVocabulary, lookAhead.sequence, AbstractEntity.class);
+	private IEntity processCorrespondingEntity(Determiner determiner) {
+		IEntity res = null;
+		String designation = isKnownNoun(lookAhead.sequence) ? getBase(lookAhead.sequence, LexicalCategory.NOUN) : lookAhead.sequence;
+		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(actualAIVocabulary, designation, AbstractEntityConcept.class);
 
 		if (designatedConcept == null) { // Unknown word
-			AbstractEntity newConcept = new Entity();
-			res = newConcept;
-			newVocabulary.add(new Designation(lookAhead.sequence, newConcept));
+			EntityConcept newConcept = new EntityConcept();
+			Entity newEntity = new Entity(newConcept);
+			res = newEntity;
+			this.newEntities.add(newEntity);
+			NounDesignation newDesignation = new NounDesignation(designation, newConcept);
+			newDesignation.setGender(determiner.getGender());
+			newVocabulary.add(newDesignation);
 		} else {
-			res = designatedConcept;
+			if (designatedConcept instanceof EntityInterrogative) {
+				res = (EntityInterrogative) designatedConcept;
+			} else if (designatedConcept instanceof EntityConcept) {
+				if (determiner instanceof IndefiniteDeterminer){
+					Entity newEntity = new Entity((EntityConcept) designatedConcept);
+					res = newEntity;
+					this.newEntities.add(newEntity);
+				} else if (determiner instanceof DefiniteDeterminer) {
+					res = getLastMentionOfA((EntityConcept) designatedConcept);
+				} else {
+					System.err.println("There is a 3rd determiner class ? Not expected !");
+				}		
+			} else {
+				System.err.println("A concept during the parsing is of neither expected classes. Some code needs an update");
+			}
 		}
 
+		return res;
+	}
+	
+	private EntityInterrogative processCorrespondingEntityInterrogative() throws WrongGrammarRuleException {
+		EntityInterrogative res = null;
+		String designation = lookAhead.sequence;
+		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(actualAIVocabulary, designation, AbstractEntityConcept.class);
+
+		if (designatedConcept instanceof EntityInterrogative) {
+			res = (EntityInterrogative) designatedConcept;
+		} else {
+			throw new WrongGrammarRuleException();
+		}
 		return res;
 	}
 
@@ -254,12 +329,14 @@ public class GrammarParser {
 	 * Returns the concept corresponding to the current token (it is implied that the current token represents a verb) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
 	 */
 	private AbstractVerb processCorrespondingVerb() {
-		AbstractVerb res, designatedConcept = (AbstractVerb) AI.getFirstConceptDesignatedBy(actualAIVocabulary, lookAhead.sequence, AbstractVerb.class);
+		String designation = isKnownVerb(lookAhead.sequence) ? getBase(lookAhead.sequence, LexicalCategory.VERB) : lookAhead.sequence;
+
+		AbstractVerb res, designatedConcept = (AbstractVerb) AI.getFirstConceptDesignatedBy(actualAIVocabulary, designation, AbstractVerb.class);
 
 		if (designatedConcept == null) { // Unknown word
 			AbstractVerb newConcept = new Verb(Tense.PRESENT, new VerbMeaning());
 			res = newConcept;
-			newVocabulary.add(new Designation(lookAhead.sequence, newConcept));
+			newVocabulary.add(new Designation(designation, newConcept));
 		} else {
 			res = designatedConcept;
 		}
@@ -268,10 +345,10 @@ public class GrammarParser {
 	}
 
 
-	
+
 	/**
 	 * Returns a regex of the form "(c1)|(c2)|...|(cn)", where c1...cn are all designations (strings) in the AI vocabulary that designate an object of the given class.
-	 * @return Ex : "(eat)|(play)" if the parameter is Verb
+	 * @return Ex : "(eat)|(want)" if the parameter is {@link Verb}.class
 	 */
 	private String getDesignationRegex(Class<?> classDesignated) throws NotEnoughKnowledgeException {
 		String res;
@@ -285,11 +362,10 @@ public class GrammarParser {
 
 		if (temp.isEmpty()) {
 			throw new NotEnoughKnowledgeException("AI should know some " + classDesignated.getName() + "s !");
-		} else {
-			res = "(" + temp.pop() + ")";
-			for (String s : temp) {
-				res += "|(" + s + ")";
-			}
+		}
+		res = "(" + temp.pop() + ")";
+		for (String s : temp) {
+			res += "|(" + s + ")";
 		}
 
 		return res;
@@ -301,12 +377,29 @@ public class GrammarParser {
 	private String getDeterminerRegex() throws NotEnoughKnowledgeException {
 		return getDesignationRegex(Determiner.class);
 	}
-	
+
 	/**
 	 * Does not include {@link VerbInterrogative} verbs
 	 * @throws NotEnoughKnowledgeException if no verb is known
 	 */
 	private String getKnownVerbsRegex() throws NotEnoughKnowledgeException {
 		return getDesignationRegex(Verb.class);
+	}
+
+
+	public List<Entity> getNewEntities() {
+		return newEntities;
+	}
+
+	private Entity getLastMentionOfA(EntityConcept concept) {
+		Entity lastOccurence = null;
+
+		for (Entity currEntity : this.actualAIKnownEntities) {
+			if (currEntity.getReferredConcept().equals(concept)) {
+				lastOccurence = currEntity;
+			}
+		}
+
+		return lastOccurence;
 	}
 }

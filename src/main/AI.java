@@ -10,9 +10,10 @@ import java.util.Scanner;
 
 import exceptions.ParserException;
 import grammar.AbstractConcept;
-import grammar.AbstractEntity;
 import grammar.DeclarativeSentence;
 import grammar.Designation;
+import grammar.Entity;
+import grammar.EntityConcept;
 import grammar.Explain;
 import grammar.HasSameMeaningAs;
 import grammar.InterrogativeWord;
@@ -25,9 +26,21 @@ import grammar.VerbMeaning;
 
 
 /*
+ * 1ère phrase : "le chat..." -> "quel chat ?" (a qui ça fait référence pour l'instant, "le" ?)
+ * 
+ * "signifier" dans le vocab : on devrait aussi avoir "lancer", "stopper", etc au lieu de "lance", etc
+ * 
+ * signifie pourrait avoir plusieurs sens :
+ * ce chat est le même animal que cet autre chat
+ * les chats et les minets, c'est le même concept
+ * 
+ * "qui mange quoi" -> tous mange tous. "le quoi mange une quoi" -> tous masculins mange tous féminins
+ * 
+ * pas de déterminant -> on fait référence au concept (?) (matou signifie chat)
+ * 
  * Changer la voix passive selon ce qui était demandé ? : (qui mange la pomme vs john mange quoi) Passive (eg, "John eats an apple" vs "An apple is eaten by John")
  * 
- * secure user input
+ * ne pas faire confiance à l'utilisateur
  * 
  * designation random ou toutes quand plusieurs (pour say)
  * 
@@ -37,11 +50,15 @@ import grammar.VerbMeaning;
  * 
  * faire de vocabulary une map <designation->Concept> ?
  * 
+ * "ces deux instances d'animaux sont la même boule de poils" alors que l'une est un chat et l'autre un cheval
+ * 
+ * héritage de concepts. chat_5=instance de chat, qui est un mammifère, qui est un animal, qui est un être vivant
+ * 
  * faire des interfaces au lieu de classes pour les concepts pour qu'un mot puisse en etre plusieurs à la fois ?
  * 
  * Lors de la grammaire : et si jamais plusieurs fois le même (nouveau) mot dans une phrase déclarative ? Comme on utilise l'ancien vocab (et pas le nouveau), il n'apparait pas, n'apparait toujours pas, et on crée deux nouveaux concepts pour ce mot au lieu d'un
  * 
- * Deux désignations d'un genre différent peuvent désigner le même concept. C'est le mot/désignation qui a un genre au final, pas le concept lui-même
+ * Deux désignations d'un genre différent peuvent (probablement) désigner le même concept. C'est le mot/désignation qui a un genre au final, pas le concept lui-même
  */
 
 public class AI {
@@ -49,6 +66,10 @@ public class AI {
 	 * A list of facts learned from the outside
 	 */
 	private List<DeclarativeSentence> knowledge;
+	/**
+	 * The instances of entity we know about. Ex : that cat, that other cat over there, the user.
+	 */
+	private List<Entity> entitiesKnown;
 	private Scanner kb;
 	private boolean stopPrgm;
 	private Translator translator;
@@ -60,6 +81,7 @@ public class AI {
 		this.knowledge = new LinkedList<DeclarativeSentence>();
 		this.addBasicKnowledge();
 		this.stopPrgm = false;
+		this.entitiesKnown = new LinkedList<Entity>();
 
 		kb = new Scanner(System.in);	    
 	}
@@ -71,7 +93,7 @@ public class AI {
 		while (! stopPrgm) {
 			try {
 				String userInput = getInput();
-				GrammarParser parser = new GrammarParser(translator.getVocabulary());
+				GrammarParser parser = new GrammarParser(translator.getVocabulary(), this.entitiesKnown, translator.getXMLLexicon());
 				Sentence parsedInput = parser.parse(userInput);
 
 				if (parsedInput instanceof Order) {
@@ -80,14 +102,12 @@ public class AI {
 				else if (parsedInput instanceof DeclarativeSentence) {
 					this.translator.getVocabulary().addAll(parser.getNewVocabulary());
 
-					processDeclarativeSentenceFromUser((DeclarativeSentence) parsedInput);
+					processDeclarativeSentenceFromUser((DeclarativeSentence) parsedInput, parser.getNewEntities());
 				}
 			} catch (ParserException e) {
 				say(e.getMessage());
 			}
-
 		}
-
 		terminate();
 	}
 
@@ -162,15 +182,21 @@ public class AI {
 		return output.toString();
 	}
 
-	private void processDeclarativeSentenceFromUser(DeclarativeSentence declarativeSentence) {
+	private void processDeclarativeSentenceFromUser(DeclarativeSentence declarativeSentence, List<Entity> newEntities) {
 		if (declarativeSentence.isInterrogative()) {
 			answer(declarativeSentence);
 		} else {
 			this.knowledge.add(declarativeSentence);
-
 			VerbMeaning meaning = ((Verb) declarativeSentence.getVerb()).getMeaning();
-			if (meaning instanceof HasSameMeaningAs) {
-				mergeEntities(declarativeSentence.getSubject(), declarativeSentence.getObject());
+			
+			if (meaning instanceof HasSameMeaningAs &&
+					declarativeSentence.getSubject() instanceof Entity &&
+					declarativeSentence.getObject() instanceof Entity) {
+				mergeEntityConcepts(
+						((Entity)declarativeSentence.getSubject()).getReferredConcept(), 
+						((Entity)declarativeSentence.getObject()).getReferredConcept());
+			} else {
+				this.entitiesKnown.addAll(newEntities);
 			}
 
 			removeDuplicatesFromKnowledge();
@@ -191,40 +217,50 @@ public class AI {
 	}
 
 	/**
-	 * Learns that the two given entities refer to the same concept
+	 * Learns that the two given (entity) concepts refer to the same thing
 	 * It is supposed that the vocabulary has designations referring to both parameters 
-	 * @param a
-	 * @param b
 	 */
-	private void mergeEntities(AbstractEntity a, AbstractEntity b) {
+	private void mergeEntityConcepts(EntityConcept a, EntityConcept b) {
 		for (Designation currDesignation : this.translator.getVocabulary()) {
 			if (currDesignation.getDesignatedConcept().equals(a)) {
 				currDesignation.setDesignatedConcept(b);
 			}
 		}
-
-		for (DeclarativeSentence currSentence : this.knowledge) {
-			currSentence.replace(a, b);
+		
+		for (Entity currEntity : this.entitiesKnown) {
+			if (currEntity.getReferredConcept().equals(a)) {
+				currEntity.setReferredConcept(b);
+			}
 		}
 
 		// Later, merge their attributes if they have any
 	}
-
-
+	
+	/**
+	 * Learns that the two given entities refer to the same thing
+	 * It is supposed that the vocabulary has designations referring to both parameters 
+	 */
+	private void mergeEntities(Entity a, Entity b) {
+		for (DeclarativeSentence currSentence : this.knowledge) {
+			currSentence.replace(a, b);
+		}
+		this.entitiesKnown.remove(a);
+		// Later, merge their attributes if they have any
+	}
 
 
 	private void answer(DeclarativeSentence question) {
 		if (question.isInterrogative()) {
 			List<DeclarativeSentence> answers = new LinkedList<DeclarativeSentence>();
 
-			AbstractConcept questionConcepts[] = question.split();
+			Object questionConcepts[] = question.split();
 
 			for (DeclarativeSentence currFact : this.knowledge) {
 				boolean answersTheQuestion = true;
-				AbstractConcept currFactConcepts[] = currFact.split();
+				Object currFactConcepts[] = currFact.split();
 				for (int i = 0 ; i < questionConcepts.length ; i++) { // Looking at the question and potential answer in parallel
-					AbstractConcept currentQuestionConcept = questionConcepts[i];
-					AbstractConcept currentAnswerConcept = currFactConcepts[i];
+					Object currentQuestionConcept = questionConcepts[i];
+					Object currentAnswerConcept = currFactConcepts[i];
 					if (! (currentQuestionConcept instanceof InterrogativeWord) && 
 							!currentQuestionConcept.equals(currentAnswerConcept)) {
 						answersTheQuestion = false;
@@ -275,12 +311,14 @@ public class AI {
 	 * Returns null if none are found
 	 */
 	public static AbstractConcept getFirstConceptDesignatedBy(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
+		AbstractConcept res;
 		List<AbstractConcept> allConcepts = getAllConceptsDesignatedBy(vocabulary, designation, classLookedFor);
 		if (allConcepts.isEmpty()) {
-			return null;
+			res = null;
 		} else {
-			return allConcepts.get(0);
+			res = allConcepts.get(0);
 		}
+		return res;
 	}
 
 
@@ -296,5 +334,10 @@ public class AI {
 			}
 		}
 		return res;
+	}
+
+
+	public List<Entity> getEntitiesKnown() {
+		return entitiesKnown;
 	}
 }

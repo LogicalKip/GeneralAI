@@ -2,23 +2,23 @@ package grammar;
 
 public class DeclarativeSentence extends Sentence {
 
-	private AbstractEntity subject;
+	private IEntity  subject;
 
 	private AbstractVerb verb;
 
-	private AbstractEntity object;
+	private IEntity  object;
 
 	private boolean interrogative;
 
-	public DeclarativeSentence(AbstractEntity subject, AbstractVerb verb, AbstractEntity object) {
+	public DeclarativeSentence(IEntity subject, AbstractVerb verb, IEntity object) {
 		this.subject = subject;
 		this.verb = verb;
 		this.object = object;
 		this.interrogative = false;
 	}
-	
-	public AbstractConcept[] split() {
-		AbstractConcept res[] =  {this.getSubject(), this.getVerb(), this.getObject()};
+
+	public Object[] split() {
+		Object res[] =  {this.getSubject(), this.getVerb(), this.getObject()};
 		return res;
 	}
 
@@ -35,7 +35,7 @@ public class DeclarativeSentence extends Sentence {
 		this.interrogative = interrogative;
 	}
 
-	public AbstractEntity getSubject() {
+	public IEntity getSubject() {
 		return subject;
 	}
 
@@ -43,19 +43,15 @@ public class DeclarativeSentence extends Sentence {
 		return verb;
 	}
 
-	public AbstractEntity getObject() {
+	public IEntity getObject() {
 		return object;
 	}
-	
-	public void replace(AbstractConcept from, AbstractConcept to) {
-		if (from instanceof AbstractEntity && to instanceof AbstractEntity) {
-			this.subject = this.subject.equals(from) ? (AbstractEntity) to : this.subject;
-			this.object = this.object.equals(from) ? (AbstractEntity) to : this.object;
-		} else if (from instanceof AbstractVerb  && to instanceof AbstractVerb) {
-			this.verb = this.verb.equals(from) ? (AbstractVerb) to : this.verb;
-		}
+
+	public void replace(Entity from, Entity to) {
+		this.subject = this.subject.equals(from) ? to : this.subject;
+		this.object = this.object.equals(from) ? to : this.object;
 	}
-	
+
 	@Override
 	public boolean equals(Object otherObject) {
 		if (otherObject instanceof DeclarativeSentence) {
@@ -63,9 +59,8 @@ public class DeclarativeSentence extends Sentence {
 			return this.subject.equals(s.getSubject()) && 
 					this.verb.equals(s.getVerb()) &&
 					this.object.equals(s.getObject());
-		} else {
-			return super.equals(otherObject);
 		}
+		return super.equals(otherObject);
 	}
-	
+
 }

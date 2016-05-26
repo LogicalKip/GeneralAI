@@ -4,8 +4,11 @@ import java.util.LinkedList;
 import java.util.List;
 
 import grammar.AbstractConcept;
+import grammar.AbstractEntityConcept;
 import grammar.DeclarativeSentence;
 import grammar.Designation;
+import grammar.Entity;
+import grammar.IEntity;
 import simplenlg.features.Feature;
 import simplenlg.features.Tense;
 import simplenlg.framework.CoordinatedPhraseElement;
@@ -22,9 +25,10 @@ import simplenlg.realiser.Realiser;
  *
  */
 public abstract class Translator {
-	private final String languageName;
 	protected AI ai;
 	protected List<Designation> vocabulary;
+	
+	private final String languageName;
 	private Lexicon lexicon;
 	private NLGFactory nlgFactory;
 	private Realiser realiser;
@@ -91,17 +95,19 @@ public abstract class Translator {
 	 * From a {@link DeclarativeSentence}, makes an object that can be computed by the simpleNLG library, and possibly adds some features to improve the result
 	 */
 	private SPhraseSpec parseSentence(DeclarativeSentence sentence) {
+		IEntity s = sentence.getSubject();
+		IEntity o = sentence.getObject();
 		SPhraseSpec p = nlgFactory.createClause(
-				concatenateDesignations(getDesignations(sentence.getSubject())),
+				concatenateDesignations(getDesignations(s instanceof Entity ? ((Entity)s).getReferredConcept() : (AbstractEntityConcept)s)),
 				concatenateDesignations(getDesignations(sentence.getVerb())), 
-				concatenateDesignations(getDesignations(sentence.getObject())));
+				concatenateDesignations(getDesignations(o instanceof Entity ? ((Entity)o).getReferredConcept() : (AbstractEntityConcept)o)));
 
 		p.setFeature(Feature.TENSE, Tense.CONDITIONAL);
 
 		return p;
 	}
 
-	protected abstract XMLLexicon getXMLLexicon();
+	public abstract XMLLexicon getXMLLexicon();
 
 	private static String concatenateDesignations(List<Designation> designations) {
 		String res;

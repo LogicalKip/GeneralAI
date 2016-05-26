@@ -9,7 +9,7 @@ package grammar;
  * @author charles
  *
  */
-public class EntityInterrogative extends AbstractEntity implements InterrogativeWord {
+public class EntityInterrogative extends AbstractEntityConcept implements InterrogativeWord, IEntity {
 	private EntityInterrogative() {
 	}
 	

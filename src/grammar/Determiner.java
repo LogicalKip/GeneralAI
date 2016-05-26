@@ -7,7 +7,7 @@ package grammar;
  * @author charles
  *
  */
-public class Determiner extends AbstractConcept {
+public abstract class Determiner extends AbstractConcept {
 	
 	private Gender gender;
 	
