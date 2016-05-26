@@ -8,7 +8,6 @@ package grammar;
  *
  */
 public abstract class Determiner extends AbstractConcept {
-	
 	private Gender gender;
 	
 	public Determiner(Gender g) {

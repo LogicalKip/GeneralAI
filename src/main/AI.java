@@ -26,6 +26,28 @@ import grammar.VerbMeaning;
 
 
 /*
+ * un chat blanc mange une souris blanche
+[AI] Compris.
+un oiseau regarde la souris blanche
+[AI] Compris.
+qui quoi quoi ?
+[AI] Chat blanc mangerait souris blanche et oiseau regarderait.
+ * 
+ * Dans le même genre :
+[AI] Initializing...
+[AI] Ready.
+un chat blanc mange une souris blanche
+[AI] Compris.
+qui mange la souris ?
+[AI] Chat blanc mangerait souris blanche.
+qui mange la souris blanche ?
+NullPointerException car le dernier concept(la souris)==null
+	car blanc et blanc (dans la première phrase) sont considérés comme différents. Utiliser l'union de l'ancien et du nouveau vocab ?
+
+ * objet ou sujet == null car aucune entité ne correspond ("le chat blanc" -> mais pas de chat blanc), que faire ?
+ * 
+ * le quoi blanc mange quoi ?
+ * 
  * 1ère phrase : "le chat..." -> "quel chat ?" (a qui ça fait référence pour l'instant, "le" ?)
  * 
  * "signifier" dans le vocab : on devrait aussi avoir "lancer", "stopper", etc au lieu de "lance", etc
@@ -193,8 +215,8 @@ public class AI {
 					declarativeSentence.getSubject() instanceof Entity &&
 					declarativeSentence.getObject() instanceof Entity) {
 				mergeEntityConcepts(
-						((Entity)declarativeSentence.getSubject()).getReferredConcept(), 
-						((Entity)declarativeSentence.getObject()).getReferredConcept());
+						((Entity)declarativeSentence.getSubject()).getConcept(), 
+						((Entity)declarativeSentence.getObject()).getConcept());
 			} else {
 				this.entitiesKnown.addAll(newEntities);
 			}
@@ -228,8 +250,8 @@ public class AI {
 		}
 		
 		for (Entity currEntity : this.entitiesKnown) {
-			if (currEntity.getReferredConcept().equals(a)) {
-				currEntity.setReferredConcept(b);
+			if (currEntity.getConcept().equals(a)) {
+				currEntity.setConcept(b);
 			}
 		}
 

@@ -5,16 +5,21 @@ import java.util.List;
 
 import grammar.AbstractConcept;
 import grammar.AbstractEntityConcept;
+import grammar.Adjective;
 import grammar.DeclarativeSentence;
 import grammar.Designation;
+import grammar.Determiner;
 import grammar.Entity;
+import grammar.Gender;
 import grammar.IEntity;
+import grammar.NounDesignation;
 import simplenlg.features.Feature;
 import simplenlg.features.Tense;
 import simplenlg.framework.CoordinatedPhraseElement;
 import simplenlg.framework.NLGFactory;
 import simplenlg.lexicon.Lexicon;
 import simplenlg.lexicon.XMLLexicon;
+import simplenlg.phrasespec.NPPhraseSpec;
 import simplenlg.phrasespec.SPhraseSpec;
 import simplenlg.realiser.Realiser;
 
@@ -27,7 +32,7 @@ import simplenlg.realiser.Realiser;
 public abstract class Translator {
 	protected AI ai;
 	protected List<Designation> vocabulary;
-	
+
 	private final String languageName;
 	private Lexicon lexicon;
 	private NLGFactory nlgFactory;
@@ -82,13 +87,13 @@ public abstract class Translator {
 	public void say(DeclarativeSentence sentence) {
 		say(realiser.realiseSentence(parseSentence(sentence)));
 	}
-	
+
 	public void say(List<DeclarativeSentence> sentences) {
-	    CoordinatedPhraseElement c = nlgFactory.createCoordinatedPhrase();
-	    for (DeclarativeSentence s : sentences) {
-	    	c.addCoordinate(parseSentence(s));
-	    }
-	    say(realiser.realiseSentence(c));
+		CoordinatedPhraseElement c = nlgFactory.createCoordinatedPhrase();
+		for (DeclarativeSentence s : sentences) {
+			c.addCoordinate(parseSentence(s));
+		}
+		say(realiser.realiseSentence(c));
 	}
 
 	/**
@@ -97,14 +102,58 @@ public abstract class Translator {
 	private SPhraseSpec parseSentence(DeclarativeSentence sentence) {
 		IEntity s = sentence.getSubject();
 		IEntity o = sentence.getObject();
+
 		SPhraseSpec p = nlgFactory.createClause(
-				concatenateDesignations(getDesignations(s instanceof Entity ? ((Entity)s).getReferredConcept() : (AbstractEntityConcept)s)),
-				concatenateDesignations(getDesignations(sentence.getVerb())), 
-				concatenateDesignations(getDesignations(o instanceof Entity ? ((Entity)o).getReferredConcept() : (AbstractEntityConcept)o)));
+				computeEntityString(s),
+				concatenateDesignations(sentence.getVerb()), 
+				computeEntityString(o));
 
 		p.setFeature(Feature.TENSE, Tense.CONDITIONAL);
 
 		return p;
+	}
+
+	/**
+	 * More or less toString() in the current language
+	 * @return How the entity will be represented as a String after some SimpleNLG processing.
+	 */
+	private String computeEntityString(IEntity entityParam) {
+		String res;
+
+		if (entityParam instanceof Entity) {
+			Entity entity = (Entity) entityParam;
+
+			NPPhraseSpec element = nlgFactory.createNounPhrase(
+					getDefiniteDeterminerFor(entity),
+					concatenateDesignations(entity.getConcept()));
+			for (Adjective qualifier : entity.getCharacteristics()) {
+				element.addModifier(concatenateDesignations(qualifier));
+			}
+
+			res = realiser.realise(element).getRealisation();
+		} else {
+			res = concatenateDesignations((AbstractEntityConcept) entityParam);
+		}
+		return res;
+	}
+
+	/**
+	 * Returns a definite determiner that fits the gender of one of the entity's designations
+	 */
+	private String getDefiniteDeterminerFor(Entity entity) {
+		String determiner = "";
+		for (Designation currDeterminer : this.vocabulary) {
+			if (currDeterminer.getDesignatedConcept() instanceof Determiner) {
+				Gender determinerGender = ((Determiner) currDeterminer.getDesignatedConcept()).getGender();
+				for (Designation currEntityDesignation : getDesignations(entity.getConcept())) {
+					NounDesignation currNounDesignation = (NounDesignation) currEntityDesignation;
+					if (currNounDesignation.getGender().equals(determinerGender)) {
+						return currDeterminer.getValue();
+					}
+				}
+			}
+		}
+		return determiner;
 	}
 
 	public abstract XMLLexicon getXMLLexicon();
@@ -122,6 +171,10 @@ public abstract class Translator {
 		}
 
 		return res;
+	}
+
+	private String concatenateDesignations(AbstractConcept concept) {
+		return concatenateDesignations(getDesignations(concept));
 	}
 
 	private List<Designation> getDesignations(AbstractConcept concept) {

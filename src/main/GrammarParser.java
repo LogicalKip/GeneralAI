@@ -6,8 +6,10 @@ import java.util.List;
 import exceptions.NotEnoughKnowledgeException;
 import exceptions.ParserException;
 import exceptions.WrongGrammarRuleException;
+import gov.nih.nlm.nls.lvg.CmdLineSyntax.SystemOption;
 import grammar.AbstractEntityConcept;
 import grammar.AbstractVerb;
+import grammar.Adjective;
 import grammar.DeclarativeSentence;
 import grammar.DefiniteDeterminer;
 import grammar.Designation;
@@ -191,40 +193,84 @@ public class GrammarParser {
 	}
 
 	/**
-	 * nounPhrase -> determiner noun | interrogativeEntity
+	 * nounPhrase -> determiner adjectives noun adjectives | interrogativeEntity
 	 * 
-	 * E.g : a cat | what
+	 * E.g : a nice small cat | what
 	 * E.g : the what | who
 	 */
 	private IEntity nounPhrase() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
 		IEntity res;
-		
+
 		try {
+			List<Adjective> qualifiers = new LinkedList<Adjective>();
 			Determiner determiner = determiner();
-			res = noun(determiner);
+			
+			qualifiers.addAll(adjectives());
+			
+			String nounSequence = noun();
+			
+			qualifiers.addAll(adjectives());
+			
+			res = processCorrespondingEntity(determiner, qualifiers, nounSequence);
 		} catch (WrongGrammarRuleException e) {
 			res = interrogativeEntity();
 		}
 
 		return res;
 	}
+
+	private Adjective adjective() throws WrongGrammarRuleException {
+		Adjective res;
+
+		if (lookAhead.token == TokenType.COMMON_WORD && isKnownAdjective(lookAhead.sequence)) {
+			String designation = getBase(lookAhead.sequence, LexicalCategory.ADJECTIVE);
+			Adjective adjectiveConcept = (Adjective) AI.getFirstConceptDesignatedBy(actualAIVocabulary, designation, Adjective.class);
+			if (adjectiveConcept == null) {
+				adjectiveConcept = new Adjective();
+				this.newVocabulary.add(new Designation(designation, adjectiveConcept));
+			}
+			res = adjectiveConcept;
+			nextToken();
+		} else {
+			throw new WrongGrammarRuleException();
+		}
+
+		return res;
+	}
 	
+	/**
+	 * 0 or more consecutive adjectives
+	 * 
+	 * adjectives -> adjective adjectives | EPSILON
+	 */
+	private List<Adjective> adjectives() {
+		List<Adjective> res = new LinkedList<Adjective>();
+		
+		try {
+			res.add(adjective());
+			res.addAll(adjectives());
+		} catch (WrongGrammarRuleException e) {
+		}
+		
+		return res;
+	}
+
 	private EntityInterrogative interrogativeEntity() throws WrongGrammarRuleException {
 		EntityInterrogative res;
-		
+
 		if (lookAhead.token == TokenType.COMMON_WORD) {
 			res = processCorrespondingEntityInterrogative();
 			nextToken();
 		} else {
 			throw new WrongGrammarRuleException();
 		}
-		
+
 		return res;
 	}
 
 	private Determiner determiner() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
 		Determiner determiner;
-		if (lookAhead.sequence.matches(getDeterminerRegex())) {
+		if (lookAhead.token == TokenType.COMMON_WORD && lookAhead.sequence.matches(getDeterminerRegex())) {
 			determiner = (Determiner) AI.getFirstConceptDesignatedBy(actualAIVocabulary, lookAhead.sequence, Determiner.class);
 			nextToken();
 		} else {
@@ -237,10 +283,10 @@ public class GrammarParser {
 	 * noun -> WORD
 	 * @return
 	 */
-	private IEntity noun(Determiner determiner) throws WrongGrammarRuleException {
-		IEntity res;
+	private String noun() throws WrongGrammarRuleException {
+		String res;
 		if (lookAhead.token == TokenType.COMMON_WORD) {
-			res = processCorrespondingEntity(determiner);
+			res = lookAhead.sequence;
 			nextToken();
 		} else {
 			throw new WrongGrammarRuleException();
@@ -253,6 +299,10 @@ public class GrammarParser {
 	/**************** OTHER ****************/
 	/***************************************/
 	/***************************************/
+
+	private boolean isKnownAdjective(String word) {
+		return lexicon.hasWordFromVariant(word, LexicalCategory.ADJECTIVE);
+	}
 
 	private boolean isKnownNoun(String word) {
 		return lexicon.hasWordFromVariant(word, LexicalCategory.NOUN);
@@ -276,19 +326,25 @@ public class GrammarParser {
 
 
 	/**
-	 * Returns the concept corresponding to the current token (it is implied that the current token represents an entity) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
+	 * Returns the concept corresponding to the given noun if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
 	 */
-	private IEntity processCorrespondingEntity(Determiner determiner) {
+	private IEntity processCorrespondingEntity(Determiner determiner, List<Adjective> qualifiers, String nounDesignation) {
 		IEntity res = null;
-		String designation = isKnownNoun(lookAhead.sequence) ? getBase(lookAhead.sequence, LexicalCategory.NOUN) : lookAhead.sequence;
-		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(actualAIVocabulary, designation, AbstractEntityConcept.class);
+		if (isKnownNoun(nounDesignation))  {
+			nounDesignation = getBase(nounDesignation, LexicalCategory.NOUN);
+		}
+		
+		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(actualAIVocabulary, nounDesignation, AbstractEntityConcept.class);//FIXME ne marche pas pour quoi + adjectif, non ?
 
 		if (designatedConcept == null) { // Unknown word
 			EntityConcept newConcept = new EntityConcept();
+			
 			Entity newEntity = new Entity(newConcept);
+			newEntity.getCharacteristics().addAll(qualifiers);
 			res = newEntity;
 			this.newEntities.add(newEntity);
-			NounDesignation newDesignation = new NounDesignation(designation, newConcept);
+			
+			NounDesignation newDesignation = new NounDesignation(nounDesignation, newConcept);
 			newDesignation.setGender(determiner.getGender());
 			newVocabulary.add(newDesignation);
 		} else {
@@ -297,10 +353,11 @@ public class GrammarParser {
 			} else if (designatedConcept instanceof EntityConcept) {
 				if (determiner instanceof IndefiniteDeterminer){
 					Entity newEntity = new Entity((EntityConcept) designatedConcept);
+					newEntity.getCharacteristics().addAll(qualifiers);
 					res = newEntity;
 					this.newEntities.add(newEntity);
 				} else if (determiner instanceof DefiniteDeterminer) {
-					res = getLastMentionOfA((EntityConcept) designatedConcept);
+					res = getLastMentionOfA((EntityConcept) designatedConcept, qualifiers);
 				} else {
 					System.err.println("There is a 3rd determiner class ? Not expected !");
 				}		
@@ -311,7 +368,7 @@ public class GrammarParser {
 
 		return res;
 	}
-	
+
 	private EntityInterrogative processCorrespondingEntityInterrogative() throws WrongGrammarRuleException {
 		EntityInterrogative res = null;
 		String designation = lookAhead.sequence;
@@ -391,11 +448,15 @@ public class GrammarParser {
 		return newEntities;
 	}
 
-	private Entity getLastMentionOfA(EntityConcept concept) {
+	/**
+	 * Returns the last created entity such that its concept equals the parameter and its adjectives are the same as the given list
+	 */
+	private Entity getLastMentionOfA(EntityConcept concept, List<Adjective> qualifiers) {
 		Entity lastOccurence = null;
 
 		for (Entity currEntity : this.actualAIKnownEntities) {
-			if (currEntity.getReferredConcept().equals(concept)) {
+			if (currEntity.getConcept().equals(concept) && 
+					currEntity.getCharacteristics().containsAll(qualifiers)) {
 				lastOccurence = currEntity;
 			}
 		}
