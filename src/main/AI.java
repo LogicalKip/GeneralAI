@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
+import exceptions.CantFindSuchAnEntityException;
 import exceptions.ParserException;
 import grammar.AbstractConcept;
 import grammar.DeclarativeSentence;
@@ -26,37 +27,19 @@ import grammar.VerbMeaning;
 
 
 /*
- * un chat blanc mange une souris blanche
-[AI] Compris.
-un oiseau regarde la souris blanche
-[AI] Compris.
-qui quoi quoi ?
-[AI] Chat blanc mangerait souris blanche et oiseau regarderait.
- * 
- * Dans le même genre :
-[AI] Initializing...
-[AI] Ready.
-un chat blanc mange une souris blanche
-[AI] Compris.
-qui mange la souris ?
-[AI] Chat blanc mangerait souris blanche.
-qui mange la souris blanche ?
-NullPointerException car le dernier concept(la souris)==null
-	car blanc et blanc (dans la première phrase) sont considérés comme différents. Utiliser l'union de l'ancien et du nouveau vocab ?
-
- * objet ou sujet == null car aucune entité ne correspond ("le chat blanc" -> mais pas de chat blanc), que faire ?
- * 
- * le quoi blanc mange quoi ?
- * 
- * 1ère phrase : "le chat..." -> "quel chat ?" (a qui ça fait référence pour l'instant, "le" ?)
- * 
  * "signifier" dans le vocab : on devrait aussi avoir "lancer", "stopper", etc au lieu de "lance", etc
  * 
  * signifie pourrait avoir plusieurs sens :
  * ce chat est le même animal que cet autre chat
  * les chats et les minets, c'est le même concept
  * 
+ * Order utilise des ~Entity au lieu de String. 
+ * Noms propres
+ *
+ * le quoi blanc mange quoi ?
  * "qui mange quoi" -> tous mange tous. "le quoi mange une quoi" -> tous masculins mange tous féminins
+ * 
+ * "There is" + new entity (or old entity -> "I know")
  * 
  * pas de déterminant -> on fait référence au concept (?) (matou signifie chat)
  * 
@@ -67,6 +50,7 @@ NullPointerException car le dernier concept(la souris)==null
  * designation random ou toutes quand plusieurs (pour say)
  * 
  * plusieurs faits dans une phrase (ET, virgule)
+ * 1ère phrase : "le chat..." -> "quel chat ?" (a qui ça fait référence pour l'instant, "le" ?)
  * 
  * besoin de equals() dans certaines classes de grammaire ?
  * 
@@ -81,6 +65,16 @@ NullPointerException car le dernier concept(la souris)==null
  * Lors de la grammaire : et si jamais plusieurs fois le même (nouveau) mot dans une phrase déclarative ? Comme on utilise l'ancien vocab (et pas le nouveau), il n'apparait pas, n'apparait toujours pas, et on crée deux nouveaux concepts pour ce mot au lieu d'un
  * 
  * Deux désignations d'un genre différent peuvent (probablement) désigner le même concept. C'est le mot/désignation qui a un genre au final, pas le concept lui-même
+ * 
+ * 
+[AI] Initializing...
+[AI] Ready.
+un chat blanc mange une croquette
+[AI] Compris.
+qui mange quoi ?
+[AI] Le chat blanc mangerait **le** croquette.
+ car le mot n'est pas dans le lexique. Même en demandant un "la", ça met un "le" par défaut car le genre n'est pas connu dans le lexique je suppose
+
  */
 
 public class AI {
@@ -90,6 +84,7 @@ public class AI {
 	private List<DeclarativeSentence> knowledge;
 	/**
 	 * The instances of entity we know about. Ex : that cat, that other cat over there, the user.
+	 * The ones that have been mentioned last must go at the end of the list so that it can be guessed which one the user will be talking about.
 	 */
 	private List<Entity> entitiesKnown;
 	private Scanner kb;
@@ -128,6 +123,8 @@ public class AI {
 				}
 			} catch (ParserException e) {
 				say(e.getMessage());
+			} catch (CantFindSuchAnEntityException e) {
+				say("I don't know of any such " + translator.concatenateDesignations(e.getConcept()));
 			}
 		}
 		terminate();
@@ -223,6 +220,12 @@ public class AI {
 
 			removeDuplicatesFromKnowledge();
 			say("Compris.");
+		}
+		
+		// Move mentioned entities at the end so that, in the future, given an incomplete description of an entity, we may pick those at the end because they are the most likely to be referred to (they were the last mentioned)
+		for (Entity e : declarativeSentence.getMentionedEntities()) {
+			this.entitiesKnown.remove(e);
+			this.entitiesKnown.add(e);
 		}
 	}
 

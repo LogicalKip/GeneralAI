@@ -3,10 +3,10 @@ package main;
 import java.util.LinkedList;
 import java.util.List;
 
+import exceptions.CantFindSuchAnEntityException;
 import exceptions.NotEnoughKnowledgeException;
 import exceptions.ParserException;
 import exceptions.WrongGrammarRuleException;
-import gov.nih.nlm.nls.lvg.CmdLineSyntax.SystemOption;
 import grammar.AbstractEntityConcept;
 import grammar.AbstractVerb;
 import grammar.Adjective;
@@ -52,7 +52,7 @@ public class GrammarParser {
 	}
 
 
-	public Sentence parse(String input) throws ParserException {
+	public Sentence parse(String input) throws ParserException, CantFindSuchAnEntityException {
 		Tokenizer tokenizer = new Tokenizer();
 
 		// Order of tokenizer.adding is important if some regexes are not exclusive
@@ -64,7 +64,7 @@ public class GrammarParser {
 		return parse(tokenizer.getTokens());
 	}
 
-	private Sentence parse(LinkedList<Token> tokens) throws ParserException {
+	private Sentence parse(LinkedList<Token> tokens) throws ParserException, CantFindSuchAnEntityException {
 		this.tokens = tokens;
 		lookAhead = this.tokens.getFirst();
 
@@ -106,8 +106,9 @@ public class GrammarParser {
 	 * Start -> order | declarativeSentence
 	 * 
 	 * Starting rule of the grammar
+	 * @throws CantFindSuchAnEntityException 
 	 */
-	private Sentence start() throws NotEnoughKnowledgeException, WrongGrammarRuleException {
+	private Sentence start() throws NotEnoughKnowledgeException, WrongGrammarRuleException, CantFindSuchAnEntityException {
 		Sentence res;
 
 		try {
@@ -124,8 +125,9 @@ public class GrammarParser {
 	 * 
 	 * declarativeSentence -> nounPhrase verb nounPhrase QUESTION_MARK?
 	 * @return
+	 * @throws CantFindSuchAnEntityException 
 	 */
-	private DeclarativeSentence declarativeSentence() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
+	private DeclarativeSentence declarativeSentence() throws WrongGrammarRuleException, NotEnoughKnowledgeException, CantFindSuchAnEntityException {
 		DeclarativeSentence res;
 
 		IEntity subject = nounPhrase();
@@ -172,7 +174,7 @@ public class GrammarParser {
 			String objectSequence = null;
 			Verb designatedVerbalConcept = null;
 
-			for (Designation d : actualAIVocabulary) {
+			for (Designation d : getUpdatedVocabulary()) {
 				if (d.getValue().equals(verbSequence) && d.getDesignatedConcept() instanceof Verb) {
 					designatedVerbalConcept = (Verb) d.getDesignatedConcept();
 					break;
@@ -197,8 +199,9 @@ public class GrammarParser {
 	 * 
 	 * E.g : a nice small cat | what
 	 * E.g : the what | who
+	 * @throws CantFindSuchAnEntityException 
 	 */
-	private IEntity nounPhrase() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
+	private IEntity nounPhrase() throws WrongGrammarRuleException, NotEnoughKnowledgeException, CantFindSuchAnEntityException {
 		IEntity res;
 
 		try {
@@ -224,7 +227,7 @@ public class GrammarParser {
 
 		if (lookAhead.token == TokenType.COMMON_WORD && isKnownAdjective(lookAhead.sequence)) {
 			String designation = getBase(lookAhead.sequence, LexicalCategory.ADJECTIVE);
-			Adjective adjectiveConcept = (Adjective) AI.getFirstConceptDesignatedBy(actualAIVocabulary, designation, Adjective.class);
+			Adjective adjectiveConcept = (Adjective) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), designation, Adjective.class);
 			if (adjectiveConcept == null) {
 				adjectiveConcept = new Adjective();
 				this.newVocabulary.add(new Designation(designation, adjectiveConcept));
@@ -271,7 +274,7 @@ public class GrammarParser {
 	private Determiner determiner() throws WrongGrammarRuleException, NotEnoughKnowledgeException {
 		Determiner determiner;
 		if (lookAhead.token == TokenType.COMMON_WORD && lookAhead.sequence.matches(getDeterminerRegex())) {
-			determiner = (Determiner) AI.getFirstConceptDesignatedBy(actualAIVocabulary, lookAhead.sequence, Determiner.class);
+			determiner = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), lookAhead.sequence, Determiner.class);
 			nextToken();
 		} else {
 			throw new WrongGrammarRuleException();
@@ -323,18 +326,27 @@ public class GrammarParser {
 		return newVocabulary;
 	}
 
-
+	/**
+	 * Returns the concatenation of the AI vocabulary and the current new vocabulary as a new list
+	 */
+	private List<Designation> getUpdatedVocabulary() {
+		List<Designation> res = new LinkedList<Designation>();
+		res.addAll(actualAIVocabulary);
+		res.addAll(newVocabulary);
+		return res;
+	}
 
 	/**
 	 * Returns the concept corresponding to the given noun if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
+	 * @throws CantFindSuchAnEntityException 
 	 */
-	private IEntity processCorrespondingEntity(Determiner determiner, List<Adjective> qualifiers, String nounDesignation) {
+	private IEntity processCorrespondingEntity(Determiner determiner, List<Adjective> qualifiers, String nounDesignation) throws CantFindSuchAnEntityException {
 		IEntity res = null;
 		if (isKnownNoun(nounDesignation))  {
 			nounDesignation = getBase(nounDesignation, LexicalCategory.NOUN);
 		}
 		
-		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(actualAIVocabulary, nounDesignation, AbstractEntityConcept.class);//FIXME ne marche pas pour quoi + adjectif, non ?
+		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), nounDesignation, AbstractEntityConcept.class);//FIXME ne marche pas pour quoi + adjectif, non ?
 
 		if (designatedConcept == null) { // Unknown word
 			EntityConcept newConcept = new EntityConcept();
@@ -349,7 +361,8 @@ public class GrammarParser {
 			newVocabulary.add(newDesignation);
 		} else {
 			if (designatedConcept instanceof EntityInterrogative) {
-				res = (EntityInterrogative) designatedConcept;
+				EntityInterrogative interrogative = (EntityInterrogative) designatedConcept;
+				res = interrogative;
 			} else if (designatedConcept instanceof EntityConcept) {
 				if (determiner instanceof IndefiniteDeterminer){
 					Entity newEntity = new Entity((EntityConcept) designatedConcept);
@@ -358,6 +371,9 @@ public class GrammarParser {
 					this.newEntities.add(newEntity);
 				} else if (determiner instanceof DefiniteDeterminer) {
 					res = getLastMentionOfA((EntityConcept) designatedConcept, qualifiers);
+					if (res == null) {
+						throw new CantFindSuchAnEntityException((EntityConcept) designatedConcept);
+					}
 				} else {
 					System.err.println("There is a 3rd determiner class ? Not expected !");
 				}		
@@ -372,7 +388,7 @@ public class GrammarParser {
 	private EntityInterrogative processCorrespondingEntityInterrogative() throws WrongGrammarRuleException {
 		EntityInterrogative res = null;
 		String designation = lookAhead.sequence;
-		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(actualAIVocabulary, designation, AbstractEntityConcept.class);
+		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), designation, AbstractEntityConcept.class);
 
 		if (designatedConcept instanceof EntityInterrogative) {
 			res = (EntityInterrogative) designatedConcept;
@@ -388,7 +404,7 @@ public class GrammarParser {
 	private AbstractVerb processCorrespondingVerb() {
 		String designation = isKnownVerb(lookAhead.sequence) ? getBase(lookAhead.sequence, LexicalCategory.VERB) : lookAhead.sequence;
 
-		AbstractVerb res, designatedConcept = (AbstractVerb) AI.getFirstConceptDesignatedBy(actualAIVocabulary, designation, AbstractVerb.class);
+		AbstractVerb res, designatedConcept = (AbstractVerb) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), designation, AbstractVerb.class);
 
 		if (designatedConcept == null) { // Unknown word
 			AbstractVerb newConcept = new Verb(Tense.PRESENT, new VerbMeaning());
@@ -411,7 +427,7 @@ public class GrammarParser {
 		String res;
 
 		LinkedList<String> temp = new LinkedList<String>();
-		for (Designation d : actualAIVocabulary) {
+		for (Designation d : getUpdatedVocabulary()) {
 			if (classDesignated.isInstance(d.getDesignatedConcept())) {
 				temp.add(d.getValue());
 			}

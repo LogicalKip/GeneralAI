@@ -7,5 +7,5 @@ package grammar;
  * @author charles
  *
  */
-public interface IEntity {
+public interface IEntity {	
 }

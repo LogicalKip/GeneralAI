@@ -1,5 +1,8 @@
 package grammar;
 
+import java.util.LinkedList;
+import java.util.List;
+
 public class DeclarativeSentence extends Sentence {
 
 	private IEntity  subject;
@@ -61,6 +64,21 @@ public class DeclarativeSentence extends Sentence {
 					this.object.equals(s.getObject());
 		}
 		return super.equals(otherObject);
+	}
+	
+	public List<Entity> getMentionedEntities() {
+		List<Entity> res = new LinkedList<Entity>();
+
+		addInIfEntity(res, this.subject);
+		addInIfEntity(res, this.object);
+		
+		return res;
+	}
+	
+	private void addInIfEntity(List<Entity> list, IEntity object) {
+		if (object instanceof Entity) {
+			list.add((Entity)object);
+		}
 	}
 
 }

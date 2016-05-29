@@ -10,6 +10,7 @@ package grammar;
  *
  */
 public class EntityInterrogative extends AbstractEntityConcept implements InterrogativeWord, IEntity {
+	
 	private EntityInterrogative() {
 	}
 	
@@ -21,7 +22,7 @@ public class EntityInterrogative extends AbstractEntityConcept implements Interr
 		}
 		return instance;
 	}
-
+	
 	@Override
 	public String toString() {
 		return "WHICH_ENTITY";

@@ -7,6 +7,7 @@ import grammar.AbstractConcept;
 import grammar.AbstractEntityConcept;
 import grammar.Adjective;
 import grammar.DeclarativeSentence;
+import grammar.DefiniteDeterminer;
 import grammar.Designation;
 import grammar.Determiner;
 import grammar.Entity;
@@ -143,7 +144,7 @@ public abstract class Translator {
 	private String getDefiniteDeterminerFor(Entity entity) {
 		String determiner = "";
 		for (Designation currDeterminer : this.vocabulary) {
-			if (currDeterminer.getDesignatedConcept() instanceof Determiner) {
+			if (currDeterminer.getDesignatedConcept() instanceof DefiniteDeterminer) {
 				Gender determinerGender = ((Determiner) currDeterminer.getDesignatedConcept()).getGender();
 				for (Designation currEntityDesignation : getDesignations(entity.getConcept())) {
 					NounDesignation currNounDesignation = (NounDesignation) currEntityDesignation;
@@ -173,7 +174,7 @@ public abstract class Translator {
 		return res;
 	}
 
-	private String concatenateDesignations(AbstractConcept concept) {
+	public String concatenateDesignations(AbstractConcept concept) {
 		return concatenateDesignations(getDesignations(concept));
 	}
 

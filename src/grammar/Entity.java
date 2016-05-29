@@ -35,4 +35,9 @@ public class Entity implements IEntity {
 	public void setCharacteristics(List<Adjective> characteristics) {
 		this.characteristics = characteristics;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		return this == obj; // Even with all attributes equals, 2 entities may not be the same. An entity equals only itself. Therefore, the default implementation is correct and should not be changed.
+	}
 }
