@@ -50,4 +50,9 @@ public class FrenchTranslator extends Translator {
 	public XMLLexicon getXMLLexicon() {
 		return new simplenlg.lexicon.french.XMLLexicon("res/default-french-lexicon.xml");
 	}
+
+	@Override
+	public String getStanfordParserModelFilename() {
+		return "edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz";
+	}
 }

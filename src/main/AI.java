@@ -90,6 +90,7 @@ public class AI {
 	private Scanner kb;
 	private boolean stopPrgm;
 	private Translator translator;
+	private StanfordParser parser;
 
 	public AI() {
 		this.translator = new FrenchTranslator(this);
@@ -110,7 +111,6 @@ public class AI {
 		while (! stopPrgm) {
 			try {
 				String userInput = getInput();
-				GrammarParser parser = new GrammarParser(translator.getVocabulary(), this.entitiesKnown, translator.getXMLLexicon());
 				Sentence parsedInput = parser.parse(userInput);
 
 				if (parsedInput instanceof Order) {
@@ -138,6 +138,8 @@ public class AI {
 	}
 
 	private void obeyOrder(Order order) {
+		if (order.getVerb() == null) return; //FIXME temp for integration of new parser. should not happen otherwise
+		
 		VerbMeaning orderMeaning = order.getVerb().getMeaning();
 		if (orderMeaning instanceof Stop) {
 			if (order.getObject() == null) {

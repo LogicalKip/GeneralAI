@@ -96,6 +96,11 @@ public abstract class Translator {
 		}
 		say(realiser.realiseSentence(c));
 	}
+	
+	/**
+	 * Probably something like "edu/stanford/nlp/models/lexparser/SOME_MODEL.ser.gz"
+	 */
+	public abstract String getStanfordParserModelFilename();
 
 	/**
 	 * From a {@link DeclarativeSentence}, makes an object that can be computed by the simpleNLG library, and possibly adds some features to improve the result
