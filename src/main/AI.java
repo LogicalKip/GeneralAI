@@ -100,6 +100,7 @@ public class AI {
 		this.addBasicKnowledge();
 		this.stopPrgm = false;
 		this.entitiesKnown = new LinkedList<Entity>();
+		this.parser = new StanfordParser(translator.getStanfordParserModelFilename(), translator.getVocabulary(), this.entitiesKnown); 
 
 		kb = new Scanner(System.in);	    
 	}
