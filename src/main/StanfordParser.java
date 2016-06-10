@@ -9,6 +9,7 @@ import edu.stanford.nlp.parser.lexparser.LexicalizedParser;
 import edu.stanford.nlp.process.DocumentPreprocessor;
 import edu.stanford.nlp.trees.Tree;
 import exceptions.CantFindSuchAnEntityException;
+import exceptions.WrongGrammarRuleException;
 import grammar.AbstractEntityConcept;
 import grammar.AbstractVerb;
 import grammar.Adjective;
@@ -29,7 +30,7 @@ import grammar.VerbMeaning;
 import simplenlg.features.Tense;
 
 public class StanfordParser {
-	
+
 	/*
 	 * TODO getBase()
 	 */
@@ -63,21 +64,21 @@ public class StanfordParser {
 			for (Tree c : children) {
 				System.out.println(c.value());
 			}
-			
+
 			if (children.length >= 3 &&
 					children[0].value().equals("NP") &&
 					children[1].value().equals("VN") &&
 					children[2].value().equals("NP")) {
 
-				String subjectString = getLeaf(children[0], getNounValues());
-				String subjectDeterminerString = getLeaf(children[0], getDeterminerValues());
-				String verbString = getLeaf(children[1], getVerbValues());
-				String objectString = getLeaf(children[2], getNounValues());
-				String objectDeterminerString = getLeaf(children[2], getDeterminerValues());
+				String subjectString = getNoun(children[0]);
+				String subjectDeterminerString = getDeterminer(children[0]);
+				String verbString = getVerb(children[1]);
+				String objectString = getNoun(children[2]);
+				String objectDeterminerString = getDeterminer(children[2]);
 
 				Determiner subjectDeterminer = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), subjectDeterminerString, Determiner.class);
 				Determiner objectDeterminer = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), objectDeterminerString, Determiner.class);
-				
+
 				IEntity subject = processCorrespondingEntity(subjectDeterminer, new LinkedList<Adjective>(), subjectString);
 				AbstractVerb verb = processCorrespondingVerb(verbString);
 				IEntity object = processCorrespondingEntity(objectDeterminer, new LinkedList<Adjective>(), objectString);
@@ -85,8 +86,8 @@ public class StanfordParser {
 				DeclarativeSentence decl = new DeclarativeSentence(subject, verb, object);
 				decl.setInterrogative(isInterrogationMark(children[children.length-1]));
 				res = decl;
-				
-				
+
+
 				System.out.println("Phrase acceptée");
 				System.out.println(children[0].yield() + " : " + subjectString);
 				System.out.println(children[2].yield() + " : " + objectString);
@@ -94,50 +95,94 @@ public class StanfordParser {
 			} else {
 				System.out.println("Phrase incorrecte");
 			}
-			
+
 		}
 
 		return res;
 	}
-	
+
+	private Sentence sentence(Tree t) throws WrongGrammarRuleException {
+		Tree[] children = t.children();
+		if (t.value().equals("SENT") && children.length >= 3) {
+			IEntity subject = NP(children[0]);
+
+			AbstractVerb verb = null; //TODO verb
+
+			IEntity object = NP(children[2]);
+
+			return new DeclarativeSentence(subject, verb, object);
+		} else {
+			throw new WrongGrammarRuleException();
+		}
+	}
+
+	/**
+	 * Returns the entity mentioned by that nominal group
+	 * @throws WrongGrammarRuleException 
+	 */
+	private IEntity NP(Tree t) throws WrongGrammarRuleException {
+		if (t.value().equals("NP")) {
+			String noun = getNoun(t);
+			Determiner determiner = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), getDeterminer(t), Determiner.class);
+			if (noun == null) {
+
+			} else {
+				//				processCorrespondingEntity(determiner, qualifiers, noun);
+			}
+		} else {
+			throw new WrongGrammarRuleException();
+		}
+	}
+
 	private boolean isInterrogationMark(Tree t) {
 		return t.value().equals("PUNC") && t.children()[0].value().equals("?");
 	}
-	
+
 	/**
 	 * If given an array to recognize which leaves are nouns (ex : {"NC"}), will return the first (presumably only) leaf that is the noun in the given tree
 	 * @return null if none could be found
+	 * @throws WrongGrammarRuleException 
 	 */
-	private String getLeaf(Tree tree, String[] values) {
+	private String getLeaf(Tree tree, String[] values) throws WrongGrammarRuleException {
 		Tree[] children = tree.children();
-		
+
 		for (String value : values) {
 			if (tree.value().equals(value)) {
 				return children[0].value();
 			}
 		}
 
-		if (tree.children().length > 0) {
-			for (Tree child : children) {
-				String res = getLeaf(child, values);
-				if (res != null) {
-					return res;
-				}
+		for (Tree child : children) {
+			String res = getLeaf(child, values);
+			if (res != null) {
+				return res;
 			}
 		}
-		return null;
+		throw new WrongGrammarRuleException();
 	}
-	
+
+	private String getNoun(Tree tree) throws WrongGrammarRuleException {
+		return getLeaf(tree, getNounValues());
+	}
+
+	private String getVerb(Tree tree) throws WrongGrammarRuleException {
+		return getLeaf(tree, getVerbValues());
+	}
+
+	private String getDeterminer(Tree tree) throws WrongGrammarRuleException {
+		return getLeaf(tree, getDeterminerValues());
+	}
+
 	private String[] getNounValues() {
 		String[] res = {"NC", "N"};
 		return res;
 	}
-	
+
 	private String[] getVerbValues() {
 		String[] res = {"V"};
 		return res;
 	}
-	
+
 	private String[] getDeterminerValues() {
 		String[] res = {"DET"};
 		return res;
@@ -150,7 +195,7 @@ public class StanfordParser {
 	public List<Designation> getNewVocabulary() {
 		return this.newVocabulary;
 	}
-	
+
 	/**
 	 * Returns the last created entity such that its concept equals the parameter and its adjectives are the same as the given list
 	 */
@@ -166,7 +211,7 @@ public class StanfordParser {
 
 		return lastOccurence;
 	}
-	
+
 	/**
 	 * Returns the concatenation of the AI vocabulary and the current new vocabulary as a new list
 	 */
@@ -176,29 +221,28 @@ public class StanfordParser {
 		res.addAll(newVocabulary);
 		return res;
 	}
-	
+
 	/**
 	 * Returns the concept corresponding to the given noun if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
 	 * @throws CantFindSuchAnEntityException 
 	 */
 	private IEntity processCorrespondingEntity(Determiner determiner, List<Adjective> qualifiers, String nounDesignation) throws CantFindSuchAnEntityException {
 		IEntity res = null;
-	/* FIXME	if (isKnownNoun(nounDesignation))  {
+		/* FIXME	if (isKnownNoun(nounDesignation))  {
 			nounDesignation = getBase(nounDesignation, LexicalCategory.NOUN);
 		}
-		
-		*/
-		
+		 */
+
 		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), nounDesignation, AbstractEntityConcept.class);//FIXME ne marche pas pour quoi + adjectif, non ?
 
 		if (designatedConcept == null) { // Unknown word
 			EntityConcept newConcept = new EntityConcept();
-			
+
 			Entity newEntity = new Entity(newConcept);
 			newEntity.getCharacteristics().addAll(qualifiers);
 			res = newEntity;
 			this.newEntities.add(newEntity);
-			
+
 			NounDesignation newDesignation = new NounDesignation(nounDesignation, newConcept);
 			newDesignation.setGender(determiner.getGender());
 			newVocabulary.add(newDesignation);
@@ -227,8 +271,19 @@ public class StanfordParser {
 
 		return res;
 	}
-	
-	
+
+	private EntityInterrogative processCorrespondingEntityInterrogative(String designation) throws WrongGrammarRuleException {
+		EntityInterrogative res = null;
+		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), designation, AbstractEntityConcept.class);
+
+		if (designatedConcept instanceof EntityInterrogative) {
+			res = (EntityInterrogative) designatedConcept;
+		} else {
+			throw new WrongGrammarRuleException();
+		}
+		return res;
+	}
+
 
 	/**
 	 * Returns the concept corresponding to the current token (it is implied that the current token represents a verb) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
