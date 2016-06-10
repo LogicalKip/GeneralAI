@@ -28,6 +28,8 @@ import grammar.Sentence;
 import grammar.Verb;
 import grammar.VerbMeaning;
 import simplenlg.features.Tense;
+import simplenlg.framework.LexicalCategory;
+import simplenlg.lexicon.XMLLexicon;
 
 public class StanfordParser {
 
@@ -40,13 +42,15 @@ public class StanfordParser {
 	private List<Entity> newEntities;
 	private List<Designation> actualAIVocabulary;
 	private List<Entity> actualAIKnownEntities;
+	private XMLLexicon lexicon;
 
-	public StanfordParser(String parserModel, List<Designation> AIvocabulary, List<Entity> AIEntities) {
+	public StanfordParser(String parserModel, List<Designation> AIvocabulary, List<Entity> AIEntities, XMLLexicon lex) {
 		lp = LexicalizedParser.loadModel(parserModel);
 		this.actualAIVocabulary = AIvocabulary;
 		this.actualAIKnownEntities = AIEntities;
 		this.newVocabulary = new LinkedList<Designation>();
 		this.newEntities = new LinkedList<Entity>();
+		this.lexicon = lex;
 	}
 
 	public Sentence parse(String input) throws CantFindSuchAnEntityException, WrongGrammarRuleException {
@@ -58,8 +62,6 @@ public class StanfordParser {
 		for (List<HasWord> sentence : new DocumentPreprocessor(new StringReader(input))) { // for when several sentences are possible
 			Tree parsedSentence = lp.apply(sentence);
 
-			parsedSentence.pennPrint();
-
 			return sentence(parsedSentence.children()[0]); // Skip the ROOT part of the tree
 		}
 
@@ -68,17 +70,39 @@ public class StanfordParser {
 
 	private Sentence sentence(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
 		Tree[] children = t.children();
-		if (t.value().equals("SENT") && children.length >= 3) {
-			IEntity subject = NP(children[0]);
+		if (t.value().equals("SENT")) {
+			if (children.length >= 3) {//FIXME except punctuation ?
+				IEntity subject = NP(children[0]);
 
-			AbstractVerb verb = processCorrespondingVerb(getVerb(t));
+				AbstractVerb verb = processCorrespondingVerb(getVerb(t));
 
-			IEntity object = NP(children[2]);
+				IEntity object = NP(children[2]);
 
-			DeclarativeSentence res = new DeclarativeSentence(subject, verb, object);
-			res.setInterrogative(isInterrogationMark(children[children.length-1]));
-			
-			return res;
+				DeclarativeSentence res = new DeclarativeSentence(subject, verb, object);
+				res.setInterrogative(isInterrogationMark(children[children.length-1]));
+
+				return res;
+
+			} else { 
+				Verb orderVerb = infinitiveVerbalPhrase(children[0]);
+				String object = getLeaf(children[0], getNounValues());
+				return new Order(orderVerb, object);
+			} 
+		} else {
+			throw new WrongGrammarRuleException();
+		}
+	}
+
+	private Verb infinitiveVerbalPhrase(Tree t) throws WrongGrammarRuleException {
+		if (t.value().equals("VPinf")) {
+			String verb = getLeaf(t, "VINF");
+			String verbBase = isKnownVerb(verb) ? getBase(verb, LexicalCategory.VERB) : verb;
+			Verb res = (Verb) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), verbBase, Verb.class);
+			if (res == null) {
+				throw new WrongGrammarRuleException();
+			} else {
+				return res;
+			}
 		} else {
 			throw new WrongGrammarRuleException();
 		}
@@ -93,7 +117,7 @@ public class StanfordParser {
 			try {
 				noun = getNoun(t);
 				Determiner determiner = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), getDeterminer(t), Determiner.class);
-				
+
 				List<Adjective> adjectives = new LinkedList<Adjective>();
 				for (String s : getLeaves(t, getAdjectivesValues())) {
 					Adjective adjectiveConcept = (Adjective)AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), s, Adjective.class);
@@ -151,6 +175,11 @@ public class StanfordParser {
 		}
 	}
 
+	private String getLeaf(Tree tree, String value) throws WrongGrammarRuleException {
+		String[] tab = {value};
+		return getLeaf(tree, tab);
+	}
+
 	private String getNoun(Tree tree) throws WrongGrammarRuleException {
 		return getLeaf(tree, getNounValues());
 	}
@@ -172,7 +201,7 @@ public class StanfordParser {
 		String[] res = {"V"};
 		return res;
 	}
-	
+
 	private String[] getProWHValues() {
 		String[] res = {"PROWH"};
 		return res;
@@ -182,7 +211,7 @@ public class StanfordParser {
 		String[] res = {"DET"};
 		return res;
 	}
-	
+
 	private String[] getAdjectivesValues() {
 		String[] res = {"ADJ"};
 		return res;
@@ -228,10 +257,9 @@ public class StanfordParser {
 	 */
 	private IEntity processCorrespondingEntity(Determiner determiner, List<Adjective> qualifiers, String nounDesignation) throws CantFindSuchAnEntityException {
 		IEntity res = null;
-		/* FIXME	if (isKnownNoun(nounDesignation))  {
+		if (isKnownNoun(nounDesignation))  {
 			nounDesignation = getBase(nounDesignation, LexicalCategory.NOUN);
 		}
-		 */
 
 		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), nounDesignation, AbstractEntityConcept.class);//FIXME ne marche pas pour quoi + adjectif, non ?
 
@@ -251,7 +279,6 @@ public class StanfordParser {
 				EntityInterrogative interrogative = (EntityInterrogative) designatedConcept;
 				res = interrogative;
 			} else if (designatedConcept instanceof EntityConcept) {
-				
 				if (determiner instanceof IndefiniteDeterminer){
 					Entity newEntity = new Entity((EntityConcept) designatedConcept);
 					newEntity.getCharacteristics().addAll(qualifiers);
@@ -290,7 +317,7 @@ public class StanfordParser {
 	 * Returns the concept corresponding to the current token (it is implied that the current token represents a verb) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
 	 */
 	private AbstractVerb processCorrespondingVerb(String verb) {
-		String designation = /*FIXME isKnownVerb(verb) ? getBase(verb, LexicalCategory.VERB) : */verb;
+		String designation = isKnownVerb(verb) ? getBase(verb, LexicalCategory.VERB) : verb;
 
 		AbstractVerb res, designatedConcept = (AbstractVerb) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), designation, AbstractVerb.class);
 
@@ -303,5 +330,24 @@ public class StanfordParser {
 		}
 
 		return res;
+	}
+
+	private boolean isKnownAdjective(String word) {
+		return lexicon.hasWordFromVariant(word, LexicalCategory.ADJECTIVE);
+	}
+
+	private boolean isKnownNoun(String word) {
+		return lexicon.hasWordFromVariant(word, LexicalCategory.NOUN);
+	}
+
+	private boolean isKnownVerb(String word) {
+		return lexicon.hasWordFromVariant(word, LexicalCategory.VERB);
+	}
+
+	/**
+	 * More or less returns the stem of the given word
+	 */
+	private String getBase(String word, LexicalCategory category) {
+		return lexicon.getWordFromVariant(word, category).getBaseForm();
 	}
 }

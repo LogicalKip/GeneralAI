@@ -1,0 +1,247 @@
+le petit chat mange quoi ?
+(ROOT
+  (SENT
+    (NP (DET le) (ADJ petit) (NC chat))
+    (VN (V mange))
+    (NP (PROWH quoi))
+    (PUNC ?)))
+
+le chat mange quoi ?
+(ROOT
+  (SENT
+    (NP (DET le) (NC chat))
+    (VN (V mange))
+    (NP (PROWH quoi))
+    (PUNC ?)))
+
+
+le chat mange qui ?
+(ROOT
+  (SENT
+    (NP (DET le) (NC chat))
+    (VN (V mange))
+    (NP (PROWH qui))
+    (PUNC ?)))
+
+
+que mange le chat ?
+(ROOT
+  (SENT
+    (Ssub (CS que)
+      (VN (V mange))
+      (NP (DET le) (NC chat)))
+    (PUNC ?)))
+
+
+qui mange le chat ?
+(ROOT
+  (SENT
+    (NP (PROREL qui))
+    (VN (V mange))
+    (NP (DET le) (NC chat))
+    (PUNC ?)))
+
+
+quoi mange le chat ?
+(ROOT
+  (SENT
+    (NP (PROWH quoi))
+    (VN (V mange))
+    (NP (DET le) (NC chat))
+    (PUNC ?)))
+
+qu'est-ce que mange le chat ?
+(ROOT
+  (SENT
+    (VN (V qu'est) (PUNC -))
+    (NP (PRO ce)
+      (Srel
+        (NP (PROREL que))
+        (VN (V mange))
+        (NP (DET le) (NC chat))))
+    (PUNC ?)))
+
+il mange quoi, le chat ?
+(ROOT
+  (SENT
+    (VN (CLS il) (V mange))
+    (NP (PROWH quoi))
+    (PUNC ,)
+    (NP (DET le) (NC chat))
+    (PUNC ?)))
+
+qu'est-ce que le chat mange ?
+(ROOT
+  (SENT
+    (VN (V qu'est) (PUNC -) (CLS ce))
+    (Ssub (CS que)
+      (NP (DET le) (NC chat))
+      (VN (V mange)))
+    (PUNC ?)))
+
+qu'est-ce qui mange le chat ?
+(ROOT
+  (SENT
+    (VN (V qu'est) (PUNC -))
+    (NP (PRO ce)
+      (Srel
+        (NP (PROREL qui))
+        (VN (V mange))
+        (NP (DET le) (NC chat))))
+    (PUNC ?)))
+
+qui est-ce qui mange le chat ?
+(ROOT
+  (SENT
+    (NP (PROREL qui))
+    (VN (V est-ce))
+    (Srel
+      (NP (PROREL qui))
+      (VN (V mange))
+      (NP (DET le) (NC chat)))
+    (PUNC ?)))
+
+le chat mange quand ?
+(ROOT
+  (SENT
+    (NP (DET le) (NC chat))
+    (VN (V mange))
+    (AdP
+      (MWADV (ADV quand)))
+    (PUNC ?)))
+
+
+le chat mange où ?
+(ROOT
+  (SENT
+    (NP (DET le) (NC chat))
+    (VN (V mange))
+    (NP (PROWH où))
+    (PUNC ?)))
+
+où mange le chat ?
+(ROOT
+  (SENT
+    (NP (PROREL où))
+    (VN (V mange))
+    (NP (DET le) (NC chat))
+    (PUNC ?)))
+
+
+un petit chat noir mange une souris
+(ROOT
+  (SENT
+    (NP (DET un) (ADJ petit) (NC chat)
+      (AP (ADJ noir)))
+    (VN (V mange))
+    (NP (DET une) (NC souris))))
+
+un petit chat mignon mange une souris
+(ROOT
+  (SENT
+    (NP (DET un) (ADJ petit) (NC chat)
+      (AP (ADJ mignon)))
+    (VN (V mange))
+    (NP (DET une) (NC souris))))
+
+un petit chat petit mange une souris
+(ROOT
+  (SENT
+    (NP (DET un) (ADJ petit)
+      (MWN (N chat) (ADJ petit)))
+    (VN (V mange))
+    (NP (DET une) (NC souris))))
+
+qui est cette personne ?
+(ROOT
+  (SENT
+    (NP (PROREL qui))
+    (VN (V est))
+    (NP (DET cette) (NC personne))
+    (PUNC ?)))
+
+cette personne est qui ?
+(ROOT
+  (SENT
+    (NP (DET cette) (NC personne))
+    (VN (V est))
+    (NP (PROWH qui))
+    (PUNC ?)))
+
+
+démarre firefox
+(ROOT
+  (SENT
+    (VN (V démarre))
+    (VPinf
+      (VN (VINF firefox)))))
+
+démarre internet
+(ROOT
+  (SENT
+    (COORD
+      (VN (V démarre))
+      (NP (NC internet)))))
+      
+démarrer firefox
+(ROOT
+  (SENT
+    (VPinf
+      (VN (VINF démarrer))
+      (NP (NC firefox)))))
+
+lance firefox
+(ROOT
+  (SENT
+    (NP
+      (MWN (N lance) (ADJ firefox)))))
+
+
+définis firefox
+(ROOT
+  (SENT
+    (NP
+      (VPpart (VPP définis))
+      (NPP firefox))))
+
+définir firefox
+(ROOT
+  (SENT
+    (VPinf
+      (VN (VINF définir))
+      (NP (NC firefox)))))
+
+définir pain
+(ROOT
+  (SENT
+    (VPinf
+      (VN (VINF définir))
+      (NP (NC pain)))))
+
+méchant signifie dangereux
+FactoredParser: no consistent parse [hit A*-blocked edges, aborting].
+(ROOT
+  (SENT
+    (NP (NPP méchant))
+    (VN (V signifie))
+    (AP (ADJ dangereux))))
+
+"méchant" signifie "dangereux"
+(ROOT
+  (SENT
+    (NP (NC ``)
+      (AP (ADJ méchant))
+      (AP (ADJ '')))
+    (VN (V signifie) (VPP ``))
+    (AP (ADJ dangereux))
+    (NP (NC ''))))
+
+le quoi méchant mange quoi ?
+(ROOT
+  (SENT
+    (NP
+      (MWPRO (DET le) (PRO quoi))
+      (AP (ADJ méchant)))
+    (VN (V mange))
+    (NP (PROWH quoi))
+    (PUNC ?)))

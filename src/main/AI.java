@@ -28,8 +28,6 @@ import grammar.VerbMeaning;
 
 
 /*
- * "signifier" dans le vocab : on devrait aussi avoir "lancer", "stopper", etc au lieu de "lance", etc
- * 
  * signifie pourrait avoir plusieurs sens :
  * ce chat est le même animal que cet autre chat
  * les chats et les minets, c'est le même concept
@@ -101,7 +99,7 @@ public class AI {
 		this.addBasicKnowledge();
 		this.stopPrgm = false;
 		this.entitiesKnown = new LinkedList<Entity>();
-		this.parser = new StanfordParser(translator.getStanfordParserModelFilename(), translator.getVocabulary(), this.entitiesKnown); 
+		this.parser = new StanfordParser(translator.getStanfordParserModelFilename(), translator.getVocabulary(), this.entitiesKnown, translator.getXMLLexicon()); 
 
 		kb = new Scanner(System.in);	    
 	}
@@ -142,8 +140,6 @@ public class AI {
 	}
 
 	private void obeyOrder(Order order) {
-		if (order.getVerb() == null) return; //FIXME temp for integration of new parser. should not happen otherwise
-		
 		VerbMeaning orderMeaning = order.getVerb().getMeaning();
 		if (orderMeaning instanceof Stop) {
 			if (order.getObject() == null) {
