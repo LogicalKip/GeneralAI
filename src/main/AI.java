@@ -10,6 +10,7 @@ import java.util.Scanner;
 
 import exceptions.CantFindSuchAnEntityException;
 import exceptions.ParserException;
+import exceptions.WrongGrammarRuleException;
 import grammar.AbstractConcept;
 import grammar.DeclarativeSentence;
 import grammar.Designation;
@@ -126,6 +127,8 @@ public class AI {
 				say(e.getMessage());
 			} catch (CantFindSuchAnEntityException e) {
 				say("I don't know of any such " + translator.concatenateDesignations(e.getConcept()));
+			} catch (WrongGrammarRuleException e) {
+				say("I don't understand that.");
 			}
 		}
 		terminate();

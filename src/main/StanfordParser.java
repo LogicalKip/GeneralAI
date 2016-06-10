@@ -49,68 +49,36 @@ public class StanfordParser {
 		this.newEntities = new LinkedList<Entity>();
 	}
 
-	public Sentence parse(String input) throws CantFindSuchAnEntityException {
+	public Sentence parse(String input) throws CantFindSuchAnEntityException, WrongGrammarRuleException {
 		this.newVocabulary = new LinkedList<Designation>();
 		this.newEntities = new LinkedList<Entity>();
 
-		Sentence res = new Order(null, null);
+		Sentence res = null;
 
-		for (List<HasWord> sentence : new DocumentPreprocessor(new StringReader(input))) {
+		for (List<HasWord> sentence : new DocumentPreprocessor(new StringReader(input))) { // for when several sentences are possible
 			Tree parsedSentence = lp.apply(sentence);
 
 			parsedSentence.pennPrint();
-			Tree[] children = parsedSentence.children()[0].children();
 
-			for (Tree c : children) {
-				System.out.println(c.value());
-			}
-
-			if (children.length >= 3 &&
-					children[0].value().equals("NP") &&
-					children[1].value().equals("VN") &&
-					children[2].value().equals("NP")) {
-
-				String subjectString = getNoun(children[0]);
-				String subjectDeterminerString = getDeterminer(children[0]);
-				String verbString = getVerb(children[1]);
-				String objectString = getNoun(children[2]);
-				String objectDeterminerString = getDeterminer(children[2]);
-
-				Determiner subjectDeterminer = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), subjectDeterminerString, Determiner.class);
-				Determiner objectDeterminer = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), objectDeterminerString, Determiner.class);
-
-				IEntity subject = processCorrespondingEntity(subjectDeterminer, new LinkedList<Adjective>(), subjectString);
-				AbstractVerb verb = processCorrespondingVerb(verbString);
-				IEntity object = processCorrespondingEntity(objectDeterminer, new LinkedList<Adjective>(), objectString);
-
-				DeclarativeSentence decl = new DeclarativeSentence(subject, verb, object);
-				decl.setInterrogative(isInterrogationMark(children[children.length-1]));
-				res = decl;
-
-
-				System.out.println("Phrase acceptée");
-				System.out.println(children[0].yield() + " : " + subjectString);
-				System.out.println(children[2].yield() + " : " + objectString);
-				System.out.println("Verbe : " + verbString);
-			} else {
-				System.out.println("Phrase incorrecte");
-			}
-
+			return sentence(parsedSentence.children()[0]); // Skip the ROOT part of the tree
 		}
 
 		return res;
 	}
 
-	private Sentence sentence(Tree t) throws WrongGrammarRuleException {
+	private Sentence sentence(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
 		Tree[] children = t.children();
 		if (t.value().equals("SENT") && children.length >= 3) {
 			IEntity subject = NP(children[0]);
 
-			AbstractVerb verb = null; //TODO verb
+			AbstractVerb verb = processCorrespondingVerb(getVerb(t));
 
 			IEntity object = NP(children[2]);
 
-			return new DeclarativeSentence(subject, verb, object);
+			DeclarativeSentence res = new DeclarativeSentence(subject, verb, object);
+			res.setInterrogative(isInterrogationMark(children[children.length-1]));
+			
+			return res;
 		} else {
 			throw new WrongGrammarRuleException();
 		}
@@ -118,16 +86,26 @@ public class StanfordParser {
 
 	/**
 	 * Returns the entity mentioned by that nominal group
-	 * @throws WrongGrammarRuleException 
 	 */
-	private IEntity NP(Tree t) throws WrongGrammarRuleException {
+	private IEntity NP(Tree t) throws CantFindSuchAnEntityException, WrongGrammarRuleException {
 		if (t.value().equals("NP")) {
-			String noun = getNoun(t);
-			Determiner determiner = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), getDeterminer(t), Determiner.class);
-			if (noun == null) {
-
-			} else {
-				//				processCorrespondingEntity(determiner, qualifiers, noun);
+			String noun;
+			try {
+				noun = getNoun(t);
+				Determiner determiner = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), getDeterminer(t), Determiner.class);
+				
+				List<Adjective> adjectives = new LinkedList<Adjective>();
+				for (String s : getLeaves(t, getAdjectivesValues())) {
+					Adjective adjectiveConcept = (Adjective)AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), s, Adjective.class);
+					if (adjectiveConcept == null) {
+						adjectiveConcept = new Adjective();
+						this.newVocabulary.add(new Designation(s, adjectiveConcept));
+					}
+					adjectives.add(adjectiveConcept);
+				}
+				return processCorrespondingEntity(determiner, adjectives, noun);
+			} catch (WrongGrammarRuleException e) {
+				return processCorrespondingEntityInterrogative(getLeaf(t, getProWHValues()));
 			}
 		} else {
 			throw new WrongGrammarRuleException();
@@ -139,26 +117,38 @@ public class StanfordParser {
 	}
 
 	/**
-	 * If given an array to recognize which leaves are nouns (ex : {"NC"}), will return the first (presumably only) leaf that is the noun in the given tree
-	 * @return null if none could be found
-	 * @throws WrongGrammarRuleException 
+	 * If given an array to recognize which leaves are nouns (ex : {"NC"}), will return the leaves that are nouns in the given tree
 	 */
-	private String getLeaf(Tree tree, String[] values) throws WrongGrammarRuleException {
+	private List<String> getLeaves(Tree tree, String[] values) {
 		Tree[] children = tree.children();
+		List<String> res = new LinkedList<String>();
 
 		for (String value : values) {
 			if (tree.value().equals(value)) {
-				return children[0].value();
+				res.add(children[0].value());
+				return res;
 			}
 		}
 
 		for (Tree child : children) {
-			String res = getLeaf(child, values);
-			if (res != null) {
-				return res;
-			}
+			res.addAll(getLeaves(child, values));
 		}
-		throw new WrongGrammarRuleException();
+
+		return res;
+	}
+
+
+	/**
+	 * If given an array to recognize which leaves are nouns (ex : {"NC"}), will return the first leaf that is a noun in the given tree
+	 * @throws WrongGrammarRuleException 
+	 */
+	private String getLeaf(Tree tree, String[] values) throws WrongGrammarRuleException {
+		List<String> leaves = getLeaves(tree, values);
+		if (leaves.isEmpty()) {
+			throw new WrongGrammarRuleException();
+		} else {
+			return leaves.get(0);
+		}
 	}
 
 	private String getNoun(Tree tree) throws WrongGrammarRuleException {
@@ -182,9 +172,19 @@ public class StanfordParser {
 		String[] res = {"V"};
 		return res;
 	}
+	
+	private String[] getProWHValues() {
+		String[] res = {"PROWH"};
+		return res;
+	}
 
 	private String[] getDeterminerValues() {
 		String[] res = {"DET"};
+		return res;
+	}
+	
+	private String[] getAdjectivesValues() {
+		String[] res = {"ADJ"};
 		return res;
 	}
 
@@ -251,6 +251,7 @@ public class StanfordParser {
 				EntityInterrogative interrogative = (EntityInterrogative) designatedConcept;
 				res = interrogative;
 			} else if (designatedConcept instanceof EntityConcept) {
+				
 				if (determiner instanceof IndefiniteDeterminer){
 					Entity newEntity = new Entity((EntityConcept) designatedConcept);
 					newEntity.getCharacteristics().addAll(qualifiers);
