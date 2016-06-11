@@ -33,10 +33,6 @@ import simplenlg.lexicon.XMLLexicon;
 
 public class StanfordParser {
 
-	/*
-	 * TODO getBase()
-	 */
-
 	private LexicalizedParser lp;
 	private List<Designation> newVocabulary;
 	private List<Entity> newEntities;
@@ -71,6 +67,7 @@ public class StanfordParser {
 	private Sentence sentence(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
 		Tree[] children = t.children();
 		if (t.value().equals("SENT")) {
+			Sentence res;
 			if (children.length >= 3) {//FIXME except punctuation ?
 				IEntity subject = NP(children[0]);
 
@@ -78,19 +75,22 @@ public class StanfordParser {
 
 				IEntity object = NP(children[2]);
 
-				DeclarativeSentence res = new DeclarativeSentence(subject, verb, object);
-				res.setInterrogative(isInterrogationMark(children[children.length-1]));
-
-				return res;
-
-			} else { 
+				DeclarativeSentence resDecl = new DeclarativeSentence(subject, verb, object);
+				resDecl.setInterrogative(isInterrogationMark(children[children.length-1]));
+				res = resDecl;
+			} else {
 				Verb orderVerb = infinitiveVerbalPhrase(children[0]);
-				String object = getLeaf(children[0], getNounValues());
-				return new Order(orderVerb, object);
-			} 
-		} else {
-			throw new WrongGrammarRuleException();
+				String object = null;
+				try {
+					object = getLeaf(children[0], getNounValues());
+				} catch (WrongGrammarRuleException e) {
+				}
+				res = new Order(orderVerb, object); 
+			}
+			
+			return res;
 		}
+		throw new WrongGrammarRuleException();
 	}
 
 	private Verb infinitiveVerbalPhrase(Tree t) throws WrongGrammarRuleException {
@@ -100,12 +100,10 @@ public class StanfordParser {
 			Verb res = (Verb) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), verbBase, Verb.class);
 			if (res == null) {
 				throw new WrongGrammarRuleException();
-			} else {
-				return res;
 			}
-		} else {
-			throw new WrongGrammarRuleException();
+			return res;
 		}
+		throw new WrongGrammarRuleException();
 	}
 
 	/**
@@ -131,9 +129,8 @@ public class StanfordParser {
 			} catch (WrongGrammarRuleException e) {
 				return processCorrespondingEntityInterrogative(getLeaf(t, getProWHValues()));
 			}
-		} else {
-			throw new WrongGrammarRuleException();
 		}
+		throw new WrongGrammarRuleException();
 	}
 
 	private boolean isInterrogationMark(Tree t) {
@@ -170,9 +167,8 @@ public class StanfordParser {
 		List<String> leaves = getLeaves(tree, values);
 		if (leaves.isEmpty()) {
 			throw new WrongGrammarRuleException();
-		} else {
-			return leaves.get(0);
 		}
+		return leaves.get(0);
 	}
 
 	private String getLeaf(Tree tree, String value) throws WrongGrammarRuleException {

@@ -28,6 +28,8 @@ import grammar.VerbMeaning;
 
 
 /*
+ * stopper (sans COD)
+ * 
  * signifie pourrait avoir plusieurs sens :
  * ce chat est le même animal que cet autre chat
  * les chats et les minets, c'est le même concept
@@ -166,11 +168,15 @@ public class AI {
 	}
 
 	private void startSoftware(String software) {
-		try {
-			executeBackgroundCommand(software.toLowerCase());
-			say(software + " started");
-		} catch (IOException e) {
-			say("I don't know any software named " + software);
+		if (software == null) {
+			say("Start what ?");
+		} else {
+			try {
+				executeBackgroundCommand(software.toLowerCase());
+				say(software + " started");
+			} catch (IOException e) {
+				say("I don't know any software named " + software);
+			}
 		}
 	}
 

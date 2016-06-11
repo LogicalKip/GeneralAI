@@ -32,6 +32,11 @@ import simplenlg.features.Tense;
 import simplenlg.framework.LexicalCategory;
 import simplenlg.lexicon.XMLLexicon;
 
+/**
+ * Deprecated
+ * @author charles
+ *
+ */
 public class GrammarParser {
 
 	private LinkedList<Token> tokens;

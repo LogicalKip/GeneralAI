@@ -50,7 +50,6 @@ public abstract class Translator {
 
 		this.vocabulary = new LinkedList<Designation>();
 		this.addBasicVocabulary();
-
 		this.lexicon = getXMLLexicon();
 		this.nlgFactory = new NLGFactory(lexicon);
 		this.realiser = new Realiser();
