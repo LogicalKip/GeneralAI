@@ -27,7 +27,10 @@ import grammar.Verb;
 import grammar.VerbMeaning;
 
 /*
- * oui/non (notamment pour répondre à une question sans PROWH)
+ * oui/non
+ * 
+ * quoi signifie quoi ?
+[AI] Signifierait le chat/minet.
  * 
  * signifie pourrait avoir plusieurs sens :
  * ce chat est le même animal que cet autre chat
@@ -36,9 +39,6 @@ import grammar.VerbMeaning;
  * Order utilise des ~Entity au lieu de String. 
  * Noms propres
  *
- * le quoi blanc mange quoi ?
- * "qui mange quoi" -> tous mange tous. "le quoi mange une quoi" -> tous masculins mange tous féminins
- * 
  * "There is" + new entity (or old entity -> "I know")
  * 
  * pas de déterminant -> on fait référence au concept (?) (matou signifie chat)
@@ -239,6 +239,8 @@ public class AI {
 	private void processDeclarativeSentenceFromUser(DeclarativeSentence declarativeSentence, List<Entity> newEntities) {
 		if (declarativeSentence.isInterrogative()) {
 			answer(declarativeSentence);
+		} else if (this.knowledge.contains(declarativeSentence)) {
+			say("I know.");
 		} else {
 			this.knowledge.add(declarativeSentence);
 			VerbMeaning meaning = ((Verb) declarativeSentence.getVerb()).getMeaning();

@@ -31,6 +31,9 @@ import simplenlg.features.Tense;
 import simplenlg.framework.LexicalCategory;
 import simplenlg.lexicon.XMLLexicon;
 
+/**
+ * Parses user input into a {@link Sentence}, using the Stanford Natural Language Processing library
+ */
 public class StanfordParser {
 
 	private LexicalizedParser lp;
@@ -69,6 +72,10 @@ public class StanfordParser {
 		if (t.value().equals("SENT")) {
 			Sentence res;
 			try { // typical sentence : subject verb object
+				if (children.length < 3) {
+					throw new WrongGrammarRuleException();
+				}
+				
 				IEntity subject = NP(children[0]);
 
 				AbstractVerb verb = processCorrespondingVerb(getVerb(t));
@@ -222,7 +229,7 @@ public class StanfordParser {
 	}
 
 	/**
-	 * Returns the last created entity such that its concept equals the parameter and its adjectives are the same as the given list
+	 * Returns the last created entity such that its concept equals the parameter and its adjectives match the given list
 	 */
 	private Entity getLastMentionOfA(EntityConcept concept, List<Adjective> qualifiers) {
 		Entity lastOccurence = null;
@@ -249,7 +256,6 @@ public class StanfordParser {
 
 	/**
 	 * Returns the concept corresponding to the given noun if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
-	 * @throws CantFindSuchAnEntityException 
 	 */
 	private IEntity processCorrespondingEntity(Determiner determiner, List<Adjective> qualifiers, String nounDesignation) throws CantFindSuchAnEntityException {
 		IEntity res = null;
@@ -310,7 +316,7 @@ public class StanfordParser {
 
 
 	/**
-	 * Returns the concept corresponding to the current token (it is implied that the current token represents a verb) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
+	 * Returns the concept corresponding to the parameter (it is implied that it represents a verb) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
 	 */
 	private AbstractVerb processCorrespondingVerb(String verb) {
 		String designation = isKnownVerb(verb) ? getBase(verb, LexicalCategory.VERB) : verb;
