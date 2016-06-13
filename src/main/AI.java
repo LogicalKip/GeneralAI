@@ -26,9 +26,8 @@ import grammar.Stop;
 import grammar.Verb;
 import grammar.VerbMeaning;
 
-
 /*
- * stopper (sans COD)
+ * oui/non (notamment pour répondre à une question sans PROWH)
  * 
  * signifie pourrait avoir plusieurs sens :
  * ce chat est le même animal que cet autre chat
@@ -44,14 +43,15 @@ import grammar.VerbMeaning;
  * 
  * pas de déterminant -> on fait référence au concept (?) (matou signifie chat)
  * 
- * Changer la voix passive selon ce qui était demandé ? : (qui mange la pomme vs john mange quoi) Passive (eg, "John eats an apple" vs "An apple is eaten by John")
+ * Changer la voix passive selon ce qui était demandé (p.setFeature(Feature.PASSIVE, true);) ? : (qui mange la pomme vs john mange quoi) Passive (eg, "John eats an apple" vs "An apple is eaten by John")
  * 
  * ne pas faire confiance à l'utilisateur
  * 
  * designation random ou toutes quand plusieurs (pour say)
  * 
+ * processNoSuchEntityException : utiliser les adjectifs pour décrire ce qui n'a pas pu être trouvé
+ * 
  * plusieurs faits dans une phrase (ET, virgule)
- * 1ère phrase : "le chat..." -> "quel chat ?" (a qui ça fait référence pour l'instant, "le" ?)
  * 
  * besoin de equals() dans certaines classes de grammaire ?
  * 
@@ -126,12 +126,38 @@ public class AI {
 			} catch (ParserException e) {
 				say(e.getMessage());
 			} catch (CantFindSuchAnEntityException e) {
-				say("I don't know of any such " + translator.concatenateDesignations(e.getConcept()));
+				processNoSuchEntityException(e);
 			} catch (WrongGrammarRuleException e) {
 				say("I don't understand that.");
 			}
 		}
 		terminate();
+	}
+
+	private void processNoSuchEntityException(CantFindSuchAnEntityException exception) {
+		String res = "I don't know of any such " + translator.concatenateDesignations(exception.getConcept()) + ". ";
+
+		List<Entity> similarEntities = new LinkedList<Entity>();
+		for (Entity e : entitiesKnown) {
+			if (exception.getConcept().equals(e.getConcept())) {
+				similarEntities.add(e);
+			}
+		}
+
+		List<Designation> designations = translator.getDesignations(exception.getConcept());
+		String designation = designations.isEmpty() ? 
+				"that thing" :
+					"a \"" + designations.get(0).getValue() + "\"";
+
+		if (similarEntities.isEmpty()) {
+			res += "In fact, I don't even know what is " + designation;
+		} else {
+			res += "I only know of :";
+			for (Entity e : similarEntities) {
+				res += "\n\t- " + translator.computeEntityString(e, false);
+			}
+		}
+		say(res);
 	}
 
 	/**
@@ -172,7 +198,8 @@ public class AI {
 			say("Start what ?");
 		} else {
 			try {
-				executeBackgroundCommand(software.toLowerCase());
+				String command = software.toLowerCase();
+				executeBackgroundCommand(command);
 				say(software + " started");
 			} catch (IOException e) {
 				say("I don't know any software named " + software);
@@ -215,7 +242,7 @@ public class AI {
 		} else {
 			this.knowledge.add(declarativeSentence);
 			VerbMeaning meaning = ((Verb) declarativeSentence.getVerb()).getMeaning();
-			
+
 			if (meaning instanceof HasSameMeaningAs &&
 					declarativeSentence.getSubject() instanceof Entity &&
 					declarativeSentence.getObject() instanceof Entity) {
@@ -229,7 +256,7 @@ public class AI {
 			removeDuplicatesFromKnowledge();
 			say("Compris.");
 		}
-		
+
 		// Move mentioned entities at the end so that, in the future, given an incomplete description of an entity, we may pick those at the end because they are the most likely to be referred to (they were the last mentioned)
 		for (Entity e : declarativeSentence.getMentionedEntities()) {
 			this.entitiesKnown.remove(e);
@@ -259,7 +286,7 @@ public class AI {
 				currDesignation.setDesignatedConcept(b);
 			}
 		}
-		
+
 		for (Entity currEntity : this.entitiesKnown) {
 			if (currEntity.getConcept().equals(a)) {
 				currEntity.setConcept(b);
@@ -268,7 +295,7 @@ public class AI {
 
 		// Later, merge their attributes if they have any
 	}
-	
+
 	/**
 	 * Learns that the two given entities refer to the same thing
 	 * It is supposed that the vocabulary has designations referring to both parameters 
@@ -309,7 +336,19 @@ public class AI {
 			if (answers.isEmpty()) {
 				say("No idea :(");
 			} else {
-				say(answers);
+				boolean yesNoQuestion = true;
+				for (Object c : questionConcepts) {
+					if (c instanceof InterrogativeWord) {
+						yesNoQuestion = false;
+						break;
+					}
+				}
+				
+				if (yesNoQuestion) {
+					say("Yes");
+				} else {
+					say(answers);	
+				}
 			}
 		} else {
 			System.err.println("Can't answer what is not a question. Should never happen :/");
@@ -372,5 +411,9 @@ public class AI {
 
 	public List<Entity> getEntitiesKnown() {
 		return entitiesKnown;
+	}
+	
+	private boolean isOnWindows() {
+		return System.getProperty("os.name").contains("Windows");
 	}
 }

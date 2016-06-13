@@ -1,3 +1,11 @@
+le chat mange la souris.
+(ROOT
+  (SENT
+    (NP (DET le) (NC chat))
+    (VN (V mange))
+    (NP (DET la) (NC souris))
+    (PUNC .)))
+
 le petit chat mange quoi ?
 (ROOT
   (SENT

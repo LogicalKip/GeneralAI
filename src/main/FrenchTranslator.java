@@ -25,13 +25,17 @@ public class FrenchTranslator extends Translator {
 	@Override
 	public void addBasicVocabulary() {
 		this.vocabulary = new LinkedList<Designation>();
-		//FIXME remove if useless
+		
 		this.vocabulary.add(new Designation("quoi", EntityInterrogative.getInstance()));
 		this.vocabulary.add(new Designation("qui", EntityInterrogative.getInstance()));
 		this.vocabulary.add(new Designation("quoi", VerbInterrogative.getInstance()));
 		this.vocabulary.add(new Designation("signifier", new Verb(Tense.PRESENT, HasSameMeaningAs.getInstance())));
 		this.vocabulary.add(new Designation("démarrer", new Verb(Tense.PRESENT, StartSoftware.getInstance())));
-		this.vocabulary.add(new Designation("stopper", new Verb(Tense.PRESENT, Stop.getInstance())));
+
+		this.vocabulary.add(new Designation("stopper",  new Verb(Tense.PRESENT, Stop.getInstance())));
+		this.vocabulary.add(new Designation("éteindre", new Verb(Tense.PRESENT, Stop.getInstance())));
+		this.vocabulary.add(new Designation("arrêter",  new Verb(Tense.PRESENT, Stop.getInstance())));
+		
 		this.vocabulary.add(new Designation("définir", new Verb(Tense.PRESENT, Explain.getInstance())));
 
 		Gender feminine = new Gender();

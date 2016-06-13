@@ -13,6 +13,7 @@ import grammar.Determiner;
 import grammar.Entity;
 import grammar.Gender;
 import grammar.IEntity;
+import grammar.IndefiniteDeterminer;
 import grammar.NounDesignation;
 import simplenlg.features.Feature;
 import simplenlg.features.Tense;
@@ -95,7 +96,7 @@ public abstract class Translator {
 		}
 		say(realiser.realiseSentence(c));
 	}
-	
+
 	/**
 	 * Probably something like "edu/stanford/nlp/models/lexparser/SOME_MODEL.ser.gz"
 	 */
@@ -122,15 +123,15 @@ public abstract class Translator {
 	 * More or less toString() in the current language
 	 * @return How the entity will be represented as a String after some SimpleNLG processing.
 	 */
-	private String computeEntityString(IEntity entityParam) {
+	public String computeEntityString(IEntity entityParam, boolean definiteDeterminer) {
 		String res;
 
 		if (entityParam instanceof Entity) {
 			Entity entity = (Entity) entityParam;
 
 			NPPhraseSpec element = nlgFactory.createNounPhrase(
-					getDefiniteDeterminerFor(entity),
-					concatenateDesignations(entity.getConcept()));
+					definiteDeterminer ? getDefiniteDeterminerFor(entity) : getIndefiniteDeterminerFor(entity),
+							concatenateDesignations(entity.getConcept()));
 			for (Adjective qualifier : entity.getCharacteristics()) {
 				element.addModifier(concatenateDesignations(qualifier));
 			}
@@ -141,14 +142,23 @@ public abstract class Translator {
 		}
 		return res;
 	}
+	
+	/**
+	 * More or less toString() in the current language
+	 * @return How the entity will be represented as a String after some SimpleNLG processing.
+	 */
+	public String computeEntityString(IEntity entityParam) {
+		return computeEntityString(entityParam, true);
+	}
 
 	/**
-	 * Returns a definite determiner that fits the gender of one of the entity's designations
+	 * Returns a determiner that fits the gender of one of the entity's designations
 	 */
-	private String getDefiniteDeterminerFor(Entity entity) {
+	private String getDeterminerFor(Entity entity, boolean definiteDeterminer) {
 		String determiner = "";
 		for (Designation currDeterminer : this.vocabulary) {
-			if (currDeterminer.getDesignatedConcept() instanceof DefiniteDeterminer) {
+			if (definiteDeterminer ? currDeterminer.getDesignatedConcept() instanceof DefiniteDeterminer
+					: currDeterminer.getDesignatedConcept() instanceof IndefiniteDeterminer) {
 				Gender determinerGender = ((Determiner) currDeterminer.getDesignatedConcept()).getGender();
 				for (Designation currEntityDesignation : getDesignations(entity.getConcept())) {
 					NounDesignation currNounDesignation = (NounDesignation) currEntityDesignation;
@@ -159,6 +169,20 @@ public abstract class Translator {
 			}
 		}
 		return determiner;
+	}
+
+	/**
+	 * Returns a definite determiner that fits the gender of one of the entity's designations
+	 */
+	private String getDefiniteDeterminerFor(Entity entity) {
+		return getDeterminerFor(entity, true);
+	}
+
+	/**
+	 * Returns an indefinite determiner that fits the gender of one of the entity's designations
+	 */
+	private String getIndefiniteDeterminerFor(Entity entity) {
+		return getDeterminerFor(entity, false);
 	}
 
 	public abstract XMLLexicon getXMLLexicon();
@@ -182,7 +206,7 @@ public abstract class Translator {
 		return concatenateDesignations(getDesignations(concept));
 	}
 
-	private List<Designation> getDesignations(AbstractConcept concept) {
+	public List<Designation> getDesignations(AbstractConcept concept) {
 		List<Designation> res = new LinkedList<Designation>();
 		for (Designation designation : this.vocabulary) {
 			if (designation.getDesignatedConcept().equals(concept)) {

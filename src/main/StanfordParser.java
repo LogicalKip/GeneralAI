@@ -68,7 +68,7 @@ public class StanfordParser {
 		Tree[] children = t.children();
 		if (t.value().equals("SENT")) {
 			Sentence res;
-			if (children.length >= 3) {//FIXME except punctuation ?
+			try { // typical sentence : subject verb object
 				IEntity subject = NP(children[0]);
 
 				AbstractVerb verb = processCorrespondingVerb(getVerb(t));
@@ -78,12 +78,12 @@ public class StanfordParser {
 				DeclarativeSentence resDecl = new DeclarativeSentence(subject, verb, object);
 				resDecl.setInterrogative(isInterrogationMark(children[children.length-1]));
 				res = resDecl;
-			} else {
+			} catch (WrongGrammarRuleException e) { // else try an order : "do", or "do that"
 				Verb orderVerb = infinitiveVerbalPhrase(children[0]);
 				String object = null;
 				try {
 					object = getLeaf(children[0], getNounValues());
-				} catch (WrongGrammarRuleException e) {
+				} catch (WrongGrammarRuleException e1) {
 				}
 				res = new Order(orderVerb, object); 
 			}
@@ -257,7 +257,7 @@ public class StanfordParser {
 			nounDesignation = getBase(nounDesignation, LexicalCategory.NOUN);
 		}
 
-		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), nounDesignation, AbstractEntityConcept.class);//FIXME ne marche pas pour quoi + adjectif, non ?
+		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), nounDesignation, AbstractEntityConcept.class);
 
 		if (designatedConcept == null) { // Unknown word
 			EntityConcept newConcept = new EntityConcept();
@@ -283,7 +283,7 @@ public class StanfordParser {
 				} else if (determiner instanceof DefiniteDeterminer) {
 					res = getLastMentionOfA((EntityConcept) designatedConcept, qualifiers);
 					if (res == null) {
-						throw new CantFindSuchAnEntityException((EntityConcept) designatedConcept);
+						throw new CantFindSuchAnEntityException((EntityConcept) designatedConcept, qualifiers);
 					}
 				} else {
 					System.err.println("There is a 3rd determiner class ? Not expected !");
