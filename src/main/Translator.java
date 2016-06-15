@@ -1,7 +1,9 @@
 package main;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import grammar.AbstractConcept;
 import grammar.AbstractEntityConcept;
@@ -14,11 +16,17 @@ import grammar.Entity;
 import grammar.Gender;
 import grammar.IEntity;
 import grammar.IndefiniteDeterminer;
+import grammar.Myself;
 import grammar.NounDesignation;
+import grammar.User;
 import simplenlg.features.Feature;
+import simplenlg.features.NumberAgreement;
+import simplenlg.features.Person;
 import simplenlg.features.Tense;
 import simplenlg.framework.CoordinatedPhraseElement;
+import simplenlg.framework.LexicalCategory;
 import simplenlg.framework.NLGFactory;
+import simplenlg.framework.WordElement;
 import simplenlg.lexicon.Lexicon;
 import simplenlg.lexicon.XMLLexicon;
 import simplenlg.phrasespec.NPPhraseSpec;
@@ -81,6 +89,8 @@ public abstract class Translator {
 	public void say(String stringToSay) {
 		System.out.println("[AI] " + stringToSay);
 	}
+	
+	
 
 	/**
 	 * Display an abstract sentence in a way the user can understand, thanks to the language provided by the subclass
@@ -128,15 +138,21 @@ public abstract class Translator {
 
 		if (entityParam instanceof Entity) {
 			Entity entity = (Entity) entityParam;
+			
+			if (entity.equals(Myself.getInstance())) {
+				res = getBaseFirstSingularPersonalPronoun(lexicon);
+			} else if (entity.equals(User.getInstance())) {
+				res = getBaseSecondSingularPersonalPronoun(lexicon);
+			} else {
+				NPPhraseSpec element = nlgFactory.createNounPhrase(
+						definiteDeterminer ? getDefiniteDeterminerFor(entity) : getIndefiniteDeterminerFor(entity),
+								concatenateDesignations(entity.getConcept()));
+				for (Adjective qualifier : entity.getCharacteristics()) {
+					element.addModifier(concatenateDesignations(qualifier));
+				}
 
-			NPPhraseSpec element = nlgFactory.createNounPhrase(
-					definiteDeterminer ? getDefiniteDeterminerFor(entity) : getIndefiniteDeterminerFor(entity),
-							concatenateDesignations(entity.getConcept()));
-			for (Adjective qualifier : entity.getCharacteristics()) {
-				element.addModifier(concatenateDesignations(qualifier));
+				res = realiser.realise(element).getRealisation();
 			}
-
-			res = realiser.realise(element).getRealisation();
 		} else {
 			res = concatenateDesignations((AbstractEntityConcept) entityParam);
 		}
@@ -214,5 +230,30 @@ public abstract class Translator {
 			}
 		}
 		return res;
+	}
+	
+	/**
+	 * Returns "you" (the subject one) in the current language
+	 */
+	public static String getBaseSecondSingularPersonalPronoun(Lexicon lexicon) {
+		return getBaseSingularPersonalPronoun(lexicon, Person.SECOND);
+	}
+	
+	/**
+	 * Returns "I" in the current language
+	 */
+	public static String getBaseFirstSingularPersonalPronoun(Lexicon lexicon) {
+		return getBaseSingularPersonalPronoun(lexicon, Person.FIRST);
+	}
+	
+
+	public static String getBaseSingularPersonalPronoun(Lexicon lexicon, Person p) {
+		Map<String, Object> features = new HashMap<String, Object>();
+		features.put(Feature.NUMBER, NumberAgreement.SINGULAR);
+		features.put(Feature.PERSON, p);
+		
+		WordElement pronoun = lexicon.getWord(LexicalCategory.PRONOUN, features);
+		
+		return pronoun.getBaseForm();
 	}
 }

@@ -1,8 +1,10 @@
 package main;
 
 import java.io.StringReader;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import edu.stanford.nlp.ling.HasWord;
 import edu.stanford.nlp.parser.lexparser.LexicalizedParser;
@@ -22,17 +24,23 @@ import grammar.EntityConcept;
 import grammar.EntityInterrogative;
 import grammar.IEntity;
 import grammar.IndefiniteDeterminer;
+import grammar.Myself;
 import grammar.NounDesignation;
 import grammar.Order;
 import grammar.Sentence;
+import grammar.User;
 import grammar.Verb;
 import grammar.VerbMeaning;
+import simplenlg.features.Feature;
+import simplenlg.features.NumberAgreement;
+import simplenlg.features.Person;
 import simplenlg.features.Tense;
 import simplenlg.framework.LexicalCategory;
+import simplenlg.framework.WordElement;
 import simplenlg.lexicon.XMLLexicon;
 
 /**
- * Parses user input into a {@link Sentence}, using the Stanford Natural Language Processing library
+ * Parses user input into a {@link Sentence}, using the Stanford Natural Language Processing library and a (sort of) grammar
  */
 public class StanfordParser {
 
@@ -60,42 +68,108 @@ public class StanfordParser {
 
 		for (List<HasWord> sentence : new DocumentPreprocessor(new StringReader(input))) { // for when several sentences are possible
 			Tree parsedSentence = lp.apply(sentence);
-
-			return sentence(parsedSentence.children()[0]); // Skip the ROOT part of the tree
+			return start(parsedSentence.children()[0]); // First child to skip the ROOT part of the tree
 		}
 
 		return res;
 	}
 
-	private Sentence sentence(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
-		Tree[] children = t.children();
+
+	/**
+	 * The very first rule of the grammar. Represents every sentence the AI may understand
+	 * start -> order | declarativeSentence
+	 */
+	private Sentence start(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
+		try {
+			return order(t);
+		} catch (WrongGrammarRuleException e) {
+			return declarativeSentence(t);
+		}
+	}
+
+	private Order order(Tree t) throws WrongGrammarRuleException {
 		if (t.value().equals("SENT")) {
-			Sentence res;
-			try { // typical sentence : subject verb object
-				if (children.length < 3) {
-					throw new WrongGrammarRuleException();
-				}
-				
-				IEntity subject = NP(children[0]);
+			Order res;
+			Tree[] children = t.children();
+			Verb orderVerb = infinitiveVerbalPhrase(children[0]);
+			String object = null;
+			try {
+				object = getLeaf(children[0], getNounValues());
+			} catch (WrongGrammarRuleException e1) {
+			}
+			res = new Order(orderVerb, object); 
 
-				AbstractVerb verb = processCorrespondingVerb(getVerb(t));
+			return res;
+		}
+		throw new WrongGrammarRuleException();
+	}
 
-				IEntity object = NP(children[2]);
+	/**
+	 * Typical sentence : subject verb object
+	 */
+	private DeclarativeSentence declarativeSentence(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
+		if (t.value().equals("SENT")) {
+			DeclarativeSentence res;
+			Tree[] children = t.children();
 
-				DeclarativeSentence resDecl = new DeclarativeSentence(subject, verb, object);
-				resDecl.setInterrogative(isInterrogationMark(children[children.length-1]));
-				res = resDecl;
-			} catch (WrongGrammarRuleException e) { // else try an order : "do", or "do that"
-				Verb orderVerb = infinitiveVerbalPhrase(children[0]);
-				String object = null;
-				try {
-					object = getLeaf(children[0], getNounValues());
-				} catch (WrongGrammarRuleException e1) {
-				}
-				res = new Order(orderVerb, object); 
+			try {
+				res = pronounVerbalGroup(t);
+			} catch (WrongGrammarRuleException e) {
+				res = verbalGroup(t);
+			}
+
+			res.setInterrogative(isInterrogationMark(children[children.length-1]));
+
+			return res;
+		}
+		throw new WrongGrammarRuleException();
+	}
+	
+	/**
+	 * This verbal group is the typical declarative sentence, with a nominal group ("the cat"), a verb ("eats") and an object ("the mouse")
+	 */
+	private DeclarativeSentence verbalGroup(Tree t) throws CantFindSuchAnEntityException, WrongGrammarRuleException {
+		if (t.value().equals("SENT")) {
+			Tree[] children = t.children();
+			
+			if (children.length < 3) {
+				throw new WrongGrammarRuleException();
 			}
 			
-			return res;
+			IEntity subject = NP(children[0]);
+
+			AbstractVerb verb = processCorrespondingVerb(getVerb(children[1]));
+
+			IEntity object = NP(children[2]);
+
+			return new DeclarativeSentence(subject, verb, object);
+		}
+		throw new WrongGrammarRuleException();
+		
+	}
+	
+	/**
+	 * This verbal group is a declarative sentence, whose subject is a pronoun (I, you) ("I want a cat")
+	 * The subject being a pronoun changes considerably the tree structure and thus requires a separate method to {@link StanfordParser#verbalGroup(Tree)}
+	 */
+	private DeclarativeSentence pronounVerbalGroup(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
+		if (t.value().equals("SENT")) {
+			Tree[] children = t.children();
+
+			if (children.length != 1 || ! children[0].value().equals("COORD")) {
+				throw new WrongGrammarRuleException();
+			}
+			children = children[0].children();
+			
+			if (children.length != 2 || ! children[0].value().equals("VN")) {
+				throw new WrongGrammarRuleException();
+			}
+			
+			Entity subject = getEntityFromPronoun(getLeaf(children[0], "CLS"));
+			AbstractVerb verb = processCorrespondingVerb(getVerb(children[0]));
+			IEntity object = NP(children[1]);
+			
+			return new DeclarativeSentence(subject, verb, object);
 		}
 		throw new WrongGrammarRuleException();
 	}
@@ -167,8 +241,9 @@ public class StanfordParser {
 
 
 	/**
-	 * If given an array to recognize which leaves are nouns (ex : {"NC"}), will return the first leaf that is a noun in the given tree
+	 * If given an array to recognize which leaves are nouns (ex : {"NC"}), will return the first leaf that is a noun in the given tree. Same with verbs, or anything given in the array
 	 * @throws WrongGrammarRuleException 
+	 * @return Does not return the value that matched (ex : "NC"), but its son, which should be a leaf (ex : "cat")
 	 */
 	private String getLeaf(Tree tree, String[] values) throws WrongGrammarRuleException {
 		List<String> leaves = getLeaves(tree, values);
@@ -178,6 +253,9 @@ public class StanfordParser {
 		return leaves.get(0);
 	}
 
+	/**
+	 * Simpler method to call {@link StanfordParser#getLeaf(Tree, String[])} with only one value
+	 */
 	private String getLeaf(Tree tree, String value) throws WrongGrammarRuleException {
 		String[] tab = {value};
 		return getLeaf(tree, tab);
@@ -314,6 +392,14 @@ public class StanfordParser {
 		return res;
 	}
 
+	private Entity getEntityFromPronoun(String pronoun) {
+		if (isSecondSingularPersonalPronoun(pronoun)) {
+			return Myself.getInstance();
+		} else if (isFirstSingularPersonalPronoun(pronoun)) {
+			return User.getInstance();
+		}
+		return null;
+	}
 
 	/**
 	 * Returns the concept corresponding to the parameter (it is implied that it represents a verb) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
@@ -345,7 +431,22 @@ public class StanfordParser {
 	private boolean isKnownVerb(String word) {
 		return lexicon.hasWordFromVariant(word, LexicalCategory.VERB);
 	}
+	
+	/**
+	 * @return True if the given word is the equivalent of "I" in the current language
+	 */
+	public boolean isFirstSingularPersonalPronoun(String word) {//TODO word is not in base : problem ?
+		return Translator.getBaseFirstSingularPersonalPronoun(lexicon).equals(word);
+	}
+	
+	/**
+	 * @return True if the given word is the equivalent of "You" (as a subject) in the current language
+	 */
+	public boolean isSecondSingularPersonalPronoun(String word) {//TODO word is not in base : problem ?
+		return Translator.getBaseSecondSingularPersonalPronoun(lexicon).equals(word);
+	}
 
+	
 	/**
 	 * More or less returns the stem of the given word
 	 */

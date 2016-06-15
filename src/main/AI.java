@@ -27,6 +27,8 @@ import grammar.Verb;
 import grammar.VerbMeaning;
 
 /*
+ * remplacer les ajouts manuels de "le", "une", etc (peut-être même "quoi") par des recherches dans le lexique
+ * 
  * oui/non
  * 
  * quoi signifie quoi ?

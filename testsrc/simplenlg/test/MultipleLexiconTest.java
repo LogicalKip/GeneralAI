@@ -62,6 +62,7 @@ public class MultipleLexiconTest {
 		SharedLexiconTests.doBasicTests(lexicon);
 	}
 	
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testMultipleSpecifics() {
 		// try to get word which is only in NIH lexicon

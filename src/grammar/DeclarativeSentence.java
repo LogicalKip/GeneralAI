@@ -5,11 +5,11 @@ import java.util.List;
 
 public class DeclarativeSentence extends Sentence {
 
-	private IEntity  subject;
+	private IEntity subject;
 
 	private AbstractVerb verb;
 
-	private IEntity  object;
+	private IEntity object;
 
 	private boolean interrogative;
 
@@ -19,7 +19,7 @@ public class DeclarativeSentence extends Sentence {
 		this.object = object;
 		this.interrogative = false;
 	}
-
+	
 	public Object[] split() {
 		Object res[] =  {this.getSubject(), this.getVerb(), this.getObject()};
 		return res;

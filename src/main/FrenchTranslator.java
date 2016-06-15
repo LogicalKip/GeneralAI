@@ -9,6 +9,8 @@ import grammar.Explain;
 import grammar.Gender;
 import grammar.HasSameMeaningAs;
 import grammar.IndefiniteDeterminer;
+import grammar.Myself;
+import grammar.NounDesignation;
 import grammar.StartSoftware;
 import grammar.Stop;
 import grammar.Verb;
@@ -24,8 +26,6 @@ public class FrenchTranslator extends Translator {
 
 	@Override
 	public void addBasicVocabulary() {
-		this.vocabulary = new LinkedList<Designation>();
-		
 		this.vocabulary.add(new Designation("quoi", EntityInterrogative.getInstance()));
 		this.vocabulary.add(new Designation("qui", EntityInterrogative.getInstance()));
 		this.vocabulary.add(new Designation("quoi", VerbInterrogative.getInstance()));

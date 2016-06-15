@@ -253,3 +253,105 @@ le quoi méchant mange quoi ?
     (VN (V mange))
     (NP (PROWH quoi))
     (PUNC ?)))
+
+
+je suis un homme
+(ROOT
+  (SENT
+    (COORD
+      (VN (CLS je) (V suis))
+      (NP (DET un) (NC homme)))))
+
+tu es un homme
+(ROOT
+  (SENT
+    (COORD
+      (VN (CLS tu) (V es))
+      (NP (DET un) (NC homme)))))
+
+je suis gentil
+(ROOT
+  (SENT
+    (COORD
+      (VN (CLS je) (V suis))
+      (NP (NC gentil)))))
+
+je suis amical
+FactoredParser: no consistent parse [hit A*-blocked edges, aborting].
+(ROOT
+  (SENT
+    (VN (CLS je) (V suis))
+    (VPinf
+      (VN (VINF amical)))))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+je mange une souris
+(ROOT
+  (SENT
+    (COORD
+      (VN (CLS je) (V mange))
+      (NP (DET une) (NC souris)))))
+
+le chat mange la souris
+(ROOT
+  (SENT
+    (NP (DET le) (NC chat))
+    (VN (V mange))
+    (NP (DET la) (NC souris)))
+
+
+
+
+
+il est parti
+(ROOT
+  (SENT
+    (COORD
+      (VN (CLS il) (V est))
+      (NP (NC parti)))))
+
+il est intéressant
+(ROOT
+  (SENT
+    (NP (CLS il))
+    (VN (V est))
+    (AP (ADJ intéressant))))
+
+
+Start -> DeclarativeSentence | Order
+DeclarativeSentence -> (VG|VGPronoun) interrogationMark? 
+
+VG -> NG Verb NG
+VGPronoun -> coord puis VN avec cls, et NG comme second fils
+
+Order -> comme avant
+NG -> comme avant
+
+tu manges une pomme
+(ROOT
+  (SENT
+    (COORD
+      (VN (CLS tu) (V manges))
+      (NP (DET une)
+        (MWN (N pomme))))))
+features de "tu" en tant que pronom, selon le lexique : {default_infl=reg, number=SINGULAR, pronoun_type=PERSONAL, discourse_function=SUBJECT, person=SECOND, infl=[reg]}
