@@ -425,3 +425,15 @@ FactoredParser: no consistent parse [hit A*-blocked edges, aborting].
 (SENT
   (NP (NPP manger))
   (VN (V signifie) (VPP dévorer)))	
+
+je te vois
+FactoredParser: no consistent parse [hit A*-blocked edges, aborting].
+(SENT
+  (VPinf
+    (VN (CLS je) (CLO te) (V vois))))
+
+je vois toi
+(SENT
+  (COORD
+    (VN (CLS je) (V vois))
+    (NP (PRO toi))))

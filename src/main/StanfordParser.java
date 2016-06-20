@@ -76,12 +76,58 @@ public class StanfordParser {
 	 * start -> order | declarativeSentence
 	 */
 	private Sentence start(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
-//		t.pennPrint(); // Uncomment to display the tree, for debug or R&D purposes
+		t.pennPrint(); // Uncomment to display the tree, for debug or R&D purposes
 		try {
 			return order(t);
 		} catch (WrongGrammarRuleException e) {
-			return declarativeSentence(t);
+			try {
+				return relativeClauseSentence(t);
+			} catch (WrongGrammarRuleException e2) {
+				return declarativeSentence(t);
+			}
 		}
+	}
+
+	/**
+	 * A relative clause with a missing subject and a question mark can be seen as a sentence, 
+	 * because it can be guessed that the user would want to know the subject.
+	 * (I see the cat) [who eats a mouse] -> WHAT_ENTITY eats a mouse ?
+	 */
+	private Sentence relativeClauseSentence(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
+		if (t.value().equals("SENT")) {
+			Tree[] children = t.children();
+			int i = 0;
+			
+			@SuppressWarnings("unused") // May want to test if the pronoun is "who", "where", etc to give an adequate answer later. 
+			String relativePronoun = getLeaf(children[i], "PROREL"); // If there isn't any pronoun, an exception is thrown
+			i++;
+			
+			AbstractVerb verb = processCorrespondingVerb(getVerb(children[i]));
+			i++;
+
+			boolean negative;
+			try {
+				negation(children[i]);
+				i++;
+				negative = true;
+			} catch (WrongGrammarRuleException e) {
+				negative = false;
+			}
+
+			IEntity object = NP(children[i]);
+			i++;
+
+			DeclarativeSentence res = new DeclarativeSentence(EntityInterrogative.getInstance(), verb, object);
+			res.setNegative(negative);
+			
+			if (! isInterrogationMark(children[i])) {
+				throw new WrongGrammarRuleException();
+			}
+			res.setInterrogative(true);
+			
+			return res;
+		}
+		throw new WrongGrammarRuleException();
 	}
 
 	private Order order(Tree t) throws WrongGrammarRuleException {
@@ -121,7 +167,7 @@ public class StanfordParser {
 		}
 		throw new WrongGrammarRuleException();
 	}
-	
+
 	/**
 	 * This verbal group is the typical declarative sentence, with a nominal group ("the cat"), a verb ("eats") and an object ("the mouse")
 	 */
@@ -129,17 +175,17 @@ public class StanfordParser {
 		if (t.value().equals("SENT")) {
 			Tree[] children = t.children();
 			int i = 0;
-			
+
 			if (children.length < 3) {
 				throw new WrongGrammarRuleException();
 			}
-			
+
 			IEntity subject = NP(children[i]);
 			i++;
 
 			AbstractVerb verb = processCorrespondingVerb(getVerb(children[i]));
 			i++;
-			
+
 			boolean negative;
 			try {
 				negation(children[i]);
@@ -157,9 +203,9 @@ public class StanfordParser {
 			return res;
 		}
 		throw new WrongGrammarRuleException();
-		
+
 	}
-	
+
 	private void negation(Tree t) throws WrongGrammarRuleException {
 		if (t.value().equals("ADV")) {
 			Tree[] children = t.children();
@@ -170,7 +216,7 @@ public class StanfordParser {
 		}
 		throw new WrongGrammarRuleException();
 	}
-	
+
 	/**
 	 * This verbal group is a declarative sentence, whose subject is a pronoun (I, you) ("I want a cat")
 	 * The subject being a pronoun changes considerably the tree structure and thus requires a separate method to {@link StanfordParser#verbalGroup(Tree)}
@@ -183,17 +229,17 @@ public class StanfordParser {
 				throw new WrongGrammarRuleException();
 			}
 			children = children[0].children();
-			
+
 			if (children.length != 2 || ! children[0].value().equals("VN")) {
 				throw new WrongGrammarRuleException();
 			}
-			
+
 			int i = 0;
-			
+
 			Entity subject = getEntityFromPronoun(getLeaf(children[i], "CLS"));
 			AbstractVerb verb = processCorrespondingVerb(getVerb(children[i]));
 			boolean negative; 
-			
+
 			try {
 				negation(children[i]);
 				negative = true;
@@ -201,9 +247,9 @@ public class StanfordParser {
 				negative = false;
 			}
 			i++;
-			
+
 			IEntity object = NP(children[i]);
-			
+
 			DeclarativeSentence res = new DeclarativeSentence(subject, verb, object);
 			res.setNegative(negative);
 			return res;
@@ -274,6 +320,11 @@ public class StanfordParser {
 		}
 
 		return res;
+	}
+
+	private List<String> getLeaves(Tree tree, String value) {
+		String[] tab = {value};
+		return getLeaves(tree, tab);
 	}
 
 
@@ -468,14 +519,14 @@ public class StanfordParser {
 	private boolean isKnownVerb(String word) {
 		return lexicon.hasWordFromVariant(word, LexicalCategory.VERB);
 	}
-	
+
 	/**
 	 * @return True if the given word is the equivalent of "I" in the current language
 	 */
 	public boolean isFirstSingularPersonalPronoun(String word) {//TODO word is not in base : problem ?
 		return Translator.getBaseFirstSingularPersonalPronoun(lexicon).equals(word);
 	}
-	
+
 	/**
 	 * @return True if the given word is the equivalent of "You" (as a subject) in the current language
 	 */
@@ -483,7 +534,7 @@ public class StanfordParser {
 		return Translator.getBaseSecondSingularPersonalPronoun(lexicon).equals(word);
 	}
 
-	
+
 	/**
 	 * More or less returns the stem of the given word
 	 */

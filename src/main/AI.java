@@ -29,9 +29,13 @@ import grammar.Verb;
 import grammar.VerbMeaning;
 
 /*
+ * TODO list :
+ * 
  * cas particuliers pour répondre à une question négative ou non avec différents faits négatifs ou non (oui, non, je sais pas...)
  * 
  * pronom personnel 3ème personne
+ * 
+ * le temps d'un verbe est dans la phrase, pas dans le verbe lui-même, non ? Du coup, aucune différence entre Verb et VerbMeaning ? à moins que certains verbes aient le sens précis de "tel autre verbe, mais au passé/futur" (ex : devenir = être au futur ?) ?
  * 
  * pluriel
  * 
@@ -43,13 +47,11 @@ import grammar.VerbMeaning;
  * 
  * possible de réduire les redondances dues à l'utilisation de Stanford, SimpleNLG et l'ajout manuel de mots ? (ex de piste : (PROWH dans l'arbre) + ("quoi" signifie QUELLE_ENTITE dans le Translator), surement d'autres trucs)
  * 
- * oui/non comme concepts. à utiliser lors de la réponse à une question sans "quoi"
+ * oui/non comme concepts. à utiliser lors de la réponse à une yesNo question
  * 
  * faire en sorte que les say en dur soient des Sentence créées dynamiquement (donc dans le langage de l'utilisateur), comme pour "je ne sais pas"
  * 
- * phrases négatives : booléen dans DeclarativeSentence, possibilité de répondre non aux questions, vérification des incohérences (que faire si ça arrive ?)
- * 
- * une relative sans sujet et interrogative signifie "[QUELLE_ENTITE] [verbe relative] [COD relative] ?". Entre autres, "qui mange la souris ?" aura bien le sens attendu ([QUELLE_ENTITE] mange [la souris] ?)
+ * phrases négatives : vérification des incohérences (que faire si ça arrive ?)
  * 
  * gérer plusieurs utilisateurs potentiels (en gardant les infos sur eux), et pouvoir en changer (comment ?)
  * 
@@ -377,7 +379,7 @@ public class AI {
 			} else {
 				if (yesNoQuestion) {
 					if (answers.get(0).isNegative() == question.isNegative()) {
-						say("Yes");
+						say("Indeed");
 					} else {
 						say("No");
 					}
