@@ -1,7 +1,5 @@
 package main;
 
-import java.util.LinkedList;
-
 import grammar.DefiniteDeterminer;
 import grammar.Designation;
 import grammar.EntityInterrogative;
@@ -9,8 +7,8 @@ import grammar.Explain;
 import grammar.Gender;
 import grammar.HasSameMeaningAs;
 import grammar.IndefiniteDeterminer;
-import grammar.Myself;
-import grammar.NounDesignation;
+import grammar.Knowing;
+import grammar.Not;
 import grammar.StartSoftware;
 import grammar.Stop;
 import grammar.Verb;
@@ -29,6 +27,7 @@ public class FrenchTranslator extends Translator {
 		this.vocabulary.add(new Designation("quoi", EntityInterrogative.getInstance()));
 		this.vocabulary.add(new Designation("qui", EntityInterrogative.getInstance()));
 		this.vocabulary.add(new Designation("quoi", VerbInterrogative.getInstance()));
+		
 		this.vocabulary.add(new Designation("signifier", new Verb(Tense.PRESENT, HasSameMeaningAs.getInstance())));
 		this.vocabulary.add(new Designation("démarrer", new Verb(Tense.PRESENT, StartSoftware.getInstance())));
 
@@ -36,7 +35,11 @@ public class FrenchTranslator extends Translator {
 		this.vocabulary.add(new Designation("éteindre", new Verb(Tense.PRESENT, Stop.getInstance())));
 		this.vocabulary.add(new Designation("arrêter",  new Verb(Tense.PRESENT, Stop.getInstance())));
 		
+		this.vocabulary.add(new Designation("savoir",  new Verb(Tense.PRESENT, Knowing.getInstance())));
 		this.vocabulary.add(new Designation("définir", new Verb(Tense.PRESENT, Explain.getInstance())));
+		
+
+		this.vocabulary.add(new Designation("pas", Not.getInstance()));
 
 		Gender feminine = new Gender();
 		Gender masculine = new Gender();

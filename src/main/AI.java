@@ -19,6 +19,8 @@ import grammar.EntityConcept;
 import grammar.Explain;
 import grammar.HasSameMeaningAs;
 import grammar.InterrogativeWord;
+import grammar.Knowing;
+import grammar.Myself;
 import grammar.Order;
 import grammar.Sentence;
 import grammar.StartSoftware;
@@ -27,12 +29,37 @@ import grammar.Verb;
 import grammar.VerbMeaning;
 
 /*
+ * cas particuliers pour répondre à une question négative ou non avec différents faits négatifs ou non (oui, non, je sais pas...)
+ * 
+ * pronom personnel 3ème personne
+ * 
+ * pluriel
+ * 
+ * comment utiliser dynamiquement SNLG en anglais ou français ?
+ * 
+ * ordres négatifs ?
+ * 
  * remplacer les ajouts manuels de "le", "une", etc (peut-être même "quoi") par des recherches dans le lexique
  * 
- * oui/non
+ * possible de réduire les redondances dues à l'utilisation de Stanford, SimpleNLG et l'ajout manuel de mots ? (ex de piste : (PROWH dans l'arbre) + ("quoi" signifie QUELLE_ENTITE dans le Translator), surement d'autres trucs)
  * 
+ * oui/non comme concepts. à utiliser lors de la réponse à une question sans "quoi"
+ * 
+ * faire en sorte que les say en dur soient des Sentence créées dynamiquement (donc dans le langage de l'utilisateur), comme pour "je ne sais pas"
+ * 
+ * phrases négatives : booléen dans DeclarativeSentence, possibilité de répondre non aux questions, vérification des incohérences (que faire si ça arrive ?)
+ * 
+ * une relative sans sujet et interrogative signifie "[QUELLE_ENTITE] [verbe relative] [COD relative] ?". Entre autres, "qui mange la souris ?" aura bien le sens attendu ([QUELLE_ENTITE] mange [la souris] ?)
+ * 
+ * gérer plusieurs utilisateurs potentiels (en gardant les infos sur eux), et pouvoir en changer (comment ?)
+ * 
+ * wiki github pour expliquer les différents cas d'utilisation, limitations selon les OS, installation, indiquer qu'il faut Tree.pennPrint() pour afficher l'arbre
+ * 
+ * A débugger :
  * quoi signifie quoi ?
-[AI] Signifierait le chat/minet.
+ * [AI] Signifierait le chat/minet.
+ * 
+ * source d'erreur possible (plus tard) dans la grammaire : ça commence par marcher, on crée une entité ou du vocabulaire (dans la liste "newXXX"), puis la suite ne colle pas, donc on revient en arrière, on essaie avec une autre règle, elle marche, on recrée l'entite/vocab, elle marche jusqu'au bout et tout finit bien, mais on a deux fois l'entité/vocab dans la liste (voire deux légèrement différentes, dont une fausse). Faut-il réinitialiser les listes à chaque WrongGrammarRuleException (par exemple, en le forçant, en devant passer les listes au constructeur, qui les vide) ?
  * 
  * signifie pourrait avoir plusieurs sens :
  * ce chat est le même animal que cet autre chat
@@ -40,9 +67,11 @@ import grammar.VerbMeaning;
  * 
  * Order utilise des ~Entity au lieu de String. 
  * Noms propres
- *
+ * 
  * "There is" + new entity (or old entity -> "I know")
  * 
+ * gérer les "~tokens" de la grammaire avec des Tree faits main (notamment pour des cas un peu compliqués très différents des autres langues, comme "il y a" -> (VN (CLS il) (CLO y) (V a)))
+ *
  * pas de déterminant -> on fait référence au concept (?) (matou signifie chat)
  * 
  * Changer la voix passive selon ce qui était demandé (p.setFeature(Feature.PASSIVE, true);) ? : (qui mange la pomme vs john mange quoi) Passive (eg, "John eats an apple" vs "An apple is eaten by John")
@@ -69,7 +98,7 @@ import grammar.VerbMeaning;
  * 
  * Deux désignations d'un genre différent peuvent (probablement) désigner le même concept. C'est le mot/désignation qui a un genre au final, pas le concept lui-même
  * 
- * 
+ * A debugger :
 [AI] Initializing...
 [AI] Ready.
 un chat blanc mange une croquette
@@ -77,7 +106,6 @@ un chat blanc mange une croquette
 qui mange quoi ?
 [AI] Le chat blanc mangerait **le** croquette.
  car le mot n'est pas dans le lexique. Même en demandant un "la", ça met un "le" par défaut car le genre n'est pas connu dans le lexique je suppose
-
  */
 
 public class AI {
@@ -318,7 +346,14 @@ public class AI {
 			List<DeclarativeSentence> answers = new LinkedList<DeclarativeSentence>();
 
 			Object questionConcepts[] = question.split();
-
+			boolean yesNoQuestion = true;
+			for (Object c : questionConcepts) {
+				if (c instanceof InterrogativeWord) {
+					yesNoQuestion = false;
+					break;
+				}
+			}
+			
 			for (DeclarativeSentence currFact : this.knowledge) {
 				boolean answersTheQuestion = true;
 				Object currFactConcepts[] = currFact.split();
@@ -338,32 +373,49 @@ public class AI {
 			}
 
 			if (answers.isEmpty()) {
-				say("No idea :(");
+				say(getIDontKnowSentence());
 			} else {
-				boolean yesNoQuestion = true;
-				for (Object c : questionConcepts) {
-					if (c instanceof InterrogativeWord) {
-						yesNoQuestion = false;
-						break;
-					}
-				}
-				
 				if (yesNoQuestion) {
-					say("Yes");
+					if (answers.get(0).isNegative() == question.isNegative()) {
+						say("Yes");
+					} else {
+						say("No");
+					}
 				} else {
-					say(answers);	
+					List<DeclarativeSentence> actualAnswers = new LinkedList<DeclarativeSentence>();
+					for (DeclarativeSentence a : answers) {
+						if (a.isNegative() == question.isNegative()) {
+							actualAnswers.add(a);
+						}
+					}
+					say(actualAnswers);	
 				}
 			}
 		} else {
 			System.err.println("Can't answer what is not a question. Should never happen :/");
 		}
 	}
+	
+	/**
+	 * Returns a sentence that means "I don't know", without specifying what
+	 */
+	private DeclarativeSentence getIDontKnowSentence() {
+		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), this.translator.getVerbThatMeans(Knowing.getInstance()), null);
+		res.setNegative();
+		return res;
+	}
+	
+
 
 	private void say(String s) {
 		this.translator.say(s);
 	}
 
 	private void say(List<DeclarativeSentence> s) {
+		this.translator.say(s);
+	}
+	
+	private void say(DeclarativeSentence s) {
 		this.translator.say(s);
 	}
 

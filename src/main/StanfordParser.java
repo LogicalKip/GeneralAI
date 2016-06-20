@@ -1,10 +1,8 @@
 package main;
 
 import java.io.StringReader;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 import edu.stanford.nlp.ling.HasWord;
 import edu.stanford.nlp.parser.lexparser.LexicalizedParser;
@@ -15,6 +13,7 @@ import exceptions.WrongGrammarRuleException;
 import grammar.AbstractEntityConcept;
 import grammar.AbstractVerb;
 import grammar.Adjective;
+import grammar.Adverb;
 import grammar.DeclarativeSentence;
 import grammar.DefiniteDeterminer;
 import grammar.Designation;
@@ -25,18 +24,15 @@ import grammar.EntityInterrogative;
 import grammar.IEntity;
 import grammar.IndefiniteDeterminer;
 import grammar.Myself;
+import grammar.Not;
 import grammar.NounDesignation;
 import grammar.Order;
 import grammar.Sentence;
 import grammar.User;
 import grammar.Verb;
 import grammar.VerbMeaning;
-import simplenlg.features.Feature;
-import simplenlg.features.NumberAgreement;
-import simplenlg.features.Person;
 import simplenlg.features.Tense;
 import simplenlg.framework.LexicalCategory;
-import simplenlg.framework.WordElement;
 import simplenlg.lexicon.XMLLexicon;
 
 /**
@@ -80,6 +76,7 @@ public class StanfordParser {
 	 * start -> order | declarativeSentence
 	 */
 	private Sentence start(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
+//		t.pennPrint(); // Uncomment to display the tree, for debug or R&D purposes
 		try {
 			return order(t);
 		} catch (WrongGrammarRuleException e) {
@@ -131,21 +128,47 @@ public class StanfordParser {
 	private DeclarativeSentence verbalGroup(Tree t) throws CantFindSuchAnEntityException, WrongGrammarRuleException {
 		if (t.value().equals("SENT")) {
 			Tree[] children = t.children();
+			int i = 0;
 			
 			if (children.length < 3) {
 				throw new WrongGrammarRuleException();
 			}
 			
-			IEntity subject = NP(children[0]);
+			IEntity subject = NP(children[i]);
+			i++;
 
-			AbstractVerb verb = processCorrespondingVerb(getVerb(children[1]));
+			AbstractVerb verb = processCorrespondingVerb(getVerb(children[i]));
+			i++;
+			
+			boolean negative;
+			try {
+				negation(children[i]);
+				i++;
+				negative = true;
+			} catch (WrongGrammarRuleException e) {
+				negative = false;
+			}
 
-			IEntity object = NP(children[2]);
+			IEntity object = NP(children[i]);
+			i++;
 
-			return new DeclarativeSentence(subject, verb, object);
+			DeclarativeSentence res = new DeclarativeSentence(subject, verb, object);
+			res.setNegative(negative);
+			return res;
 		}
 		throw new WrongGrammarRuleException();
 		
+	}
+	
+	private void negation(Tree t) throws WrongGrammarRuleException {
+		if (t.value().equals("ADV")) {
+			Tree[] children = t.children();
+			if (AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), children[0].value(), Adverb.class)
+					.equals(Not.getInstance())) {
+				return;
+			}
+		}
+		throw new WrongGrammarRuleException();
 	}
 	
 	/**
@@ -165,11 +188,25 @@ public class StanfordParser {
 				throw new WrongGrammarRuleException();
 			}
 			
-			Entity subject = getEntityFromPronoun(getLeaf(children[0], "CLS"));
-			AbstractVerb verb = processCorrespondingVerb(getVerb(children[0]));
-			IEntity object = NP(children[1]);
+			int i = 0;
 			
-			return new DeclarativeSentence(subject, verb, object);
+			Entity subject = getEntityFromPronoun(getLeaf(children[i], "CLS"));
+			AbstractVerb verb = processCorrespondingVerb(getVerb(children[i]));
+			boolean negative; 
+			
+			try {
+				negation(children[i]);
+				negative = true;
+			} catch (WrongGrammarRuleException e) {
+				negative = false;
+			}
+			i++;
+			
+			IEntity object = NP(children[i]);
+			
+			DeclarativeSentence res = new DeclarativeSentence(subject, verb, object);
+			res.setNegative(negative);
+			return res;
 		}
 		throw new WrongGrammarRuleException();
 	}

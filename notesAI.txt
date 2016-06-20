@@ -262,6 +262,12 @@ je suis un homme
       (VN (CLS je) (V suis))
       (NP (DET un) (NC homme)))))
 
+je ne suis pas un chat
+(SENT
+  (COORD
+    (VN (CLS je) (ADV ne) (V suis) (ADV pas))
+    (NP (DET un) (NC chat))))
+
 tu es un homme
 (ROOT
   (SENT
@@ -355,3 +361,67 @@ tu manges une pomme
       (NP (DET une)
         (MWN (N pomme))))))
 features de "tu" en tant que pronom, selon le lexique : {default_infl=reg, number=SINGULAR, pronoun_type=PERSONAL, discourse_function=SUBJECT, person=SECOND, infl=[reg]}
+
+
+le chat ne mange pas la souris
+(SENT
+  (NP (DET le) (NC chat))
+  (VN (ADV ne) (V mange))
+  (ADV pas)
+  (NP (DET la) (NC souris)))
+
+le chat mange pas la souris
+(SENT
+  (NP (DET le) (NC chat))
+  (VN (V mange))
+  (ADV pas)
+  (NP (DET la) (NC souris)))
+
+quoi ne mange pas la souris ?
+(SENT
+  (NP (PROWH quoi))
+  (VN (ADV ne) (V mange))
+  (ADV pas)
+  (NP (DET la) (NC souris))
+  (PUNC ?))
+
+la souris ne mange pas quoi ?
+(SENT
+  (NP (DET la) (NC souris))
+  (VN (ADV ne) (V mange))
+  (ADV pas)
+  (NP (PROWH quoi))
+  (PUNC ?))
+
+il y a un petit chat.
+(SENT
+  (VN (CLS il) (CLO y) (V a))
+  (NP (DET un) (ADJ petit) (NC chat))
+  (PUNC .))
+
+oui
+(SENT
+  (NP (I oui)))
+non
+(SENT
+  (NP (I non)))
+
+en effet
+(SENT
+  (PP (P en)
+    (NP (NC effet))))
+    
+affirmatif
+(SENT
+  (NP (NC affirmatif)))
+
+dévorer signifie manger
+(SENT
+  (NP (NC dévorer))
+  (VN (V signifie) (VINF manger)))
+
+manger signifie dévorer
+FactoredParser: no consistent parse [hit A*-blocked edges, aborting].
+(SENT
+  (NP (NPP manger))
+  (VN (V signifie) (VPP dévorer)))	

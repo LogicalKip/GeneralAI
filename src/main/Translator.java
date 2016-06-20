@@ -19,6 +19,8 @@ import grammar.IndefiniteDeterminer;
 import grammar.Myself;
 import grammar.NounDesignation;
 import grammar.User;
+import grammar.Verb;
+import grammar.VerbMeaning;
 import simplenlg.features.Feature;
 import simplenlg.features.NumberAgreement;
 import simplenlg.features.Person;
@@ -123,7 +125,8 @@ public abstract class Translator {
 				computeEntityString(s),
 				concatenateDesignations(sentence.getVerb()), 
 				computeEntityString(o));
-
+		
+		p.setFeature(Feature.NEGATED, sentence.isNegative());
 		p.setFeature(Feature.TENSE, Tense.CONDITIONAL);
 
 		return p;
@@ -230,6 +233,21 @@ public abstract class Translator {
 			}
 		}
 		return res;
+	}
+	
+	/**
+	 * Looks in the vocabulary and returns the verb that has given meaning, or null if it isn't there
+	 */
+	public Verb getVerbThatMeans(VerbMeaning m) {
+		for (Designation d : this.vocabulary) {
+			if (d.getDesignatedConcept() instanceof Verb) {
+				Verb v = (Verb) d.getDesignatedConcept();
+				if (v.getMeaning().equals(m)) {
+					return v;
+				}
+			}
+		}
+		return null;
 	}
 	
 	/**

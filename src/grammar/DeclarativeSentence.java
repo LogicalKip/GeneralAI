@@ -4,6 +4,20 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class DeclarativeSentence extends Sentence {
+	
+	private boolean isNegative;
+
+	public boolean isNegative() {
+		return isNegative;
+	}
+
+	public void setNegative(boolean isNegative) {
+		this.isNegative = isNegative;
+	}
+	
+	public void setNegative() {
+		this.isNegative = true;
+	}
 
 	private IEntity subject;
 
@@ -18,6 +32,7 @@ public class DeclarativeSentence extends Sentence {
 		this.verb = verb;
 		this.object = object;
 		this.interrogative = false;
+		this.isNegative = false;
 	}
 	
 	public Object[] split() {

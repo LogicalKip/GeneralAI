@@ -1,5 +1,4 @@
 package grammar;
 
-public class Sentence {
-
+public abstract class Sentence {
 }

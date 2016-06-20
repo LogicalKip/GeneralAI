@@ -1,8 +1,10 @@
 package grammar;
 
 /**
- * The human talking to the AI
- *
+ * The human talking to the AI.
+ * It is implied there can be only one for now.
+ * 
+ * A singleton
  */
 public class User extends Entity {
 	private User() {
