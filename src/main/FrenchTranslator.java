@@ -31,7 +31,6 @@ public class FrenchTranslator extends Translator {
 		this.vocabulary.add(new Designation("signifier", new Verb(Tense.PRESENT, HasSameMeaningAs.getInstance())));
 		this.vocabulary.add(new Designation("démarrer", new Verb(Tense.PRESENT, StartSoftware.getInstance())));
 
-		this.vocabulary.add(new Designation("stopper",  new Verb(Tense.PRESENT, Stop.getInstance())));
 		this.vocabulary.add(new Designation("éteindre", new Verb(Tense.PRESENT, Stop.getInstance())));
 		this.vocabulary.add(new Designation("arrêter",  new Verb(Tense.PRESENT, Stop.getInstance())));
 		

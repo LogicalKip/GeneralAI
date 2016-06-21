@@ -132,7 +132,7 @@ public abstract class Translator {
 
 		SPhraseSpec p = nlgFactory.createClause(
 				computeEntityString(s),
-				concatenateDesignations(sentence.getVerb()), 
+				getBestDesignation(sentence.getVerb()), 
 				computeEntityString(o));
 
 		p.setFeature(Feature.NEGATED, sentence.isNegative());
@@ -153,7 +153,7 @@ public abstract class Translator {
 	}
 	
 	public SPhraseSpec getSoftwareStartedSentence(String softwareName) throws NotEnoughKnowledgeException {
-		SPhraseSpec res = nlgFactory.createClause(null, getDesignation(getVerbThatMeans(StartSoftware.getInstance())), softwareName);
+		SPhraseSpec res = nlgFactory.createClause(null, getDesignation(getVerbThatMeans(StartSoftware.getInstance())).getValue(), softwareName);
 		res.setFeature(Feature.PASSIVE, true);
 		return res;
 	}
@@ -175,15 +175,15 @@ public abstract class Translator {
 			} else {
 				NPPhraseSpec element = nlgFactory.createNounPhrase(
 						definiteDeterminer ? getDefiniteDeterminerFor(entity) : getIndefiniteDeterminerFor(entity),
-								concatenateDesignations(entity.getConcept()));
+								getBestDesignation(entity.getConcept()));
 				for (Adjective qualifier : entity.getCharacteristics()) {
-					element.addModifier(concatenateDesignations(qualifier));
+					element.addModifier(getBestDesignation(qualifier));
 				}
 
 				res = realiser.realise(element).getRealisation();
 			}
 		} else {
-			res = concatenateDesignations((AbstractEntityConcept) entityParam);
+			res = getBestDesignation((AbstractEntityConcept) entityParam);
 		}
 		return res;
 	}
@@ -193,14 +193,14 @@ public abstract class Translator {
 
 		NPPhraseSpec element = nlgFactory.createNounPhrase(
 				getDeterminerFor(concept, false), 
-				concatenateDesignations(concept));
+				getBestDesignation(concept));
 		for (String qualifier : qualifiers) {
 			AbstractConcept qualifierConcept = AI.getFirstConceptDesignatedBy(getVocabulary(), qualifier, Adjective.class);
 			String qualifierString;
 			if (qualifierConcept == null) {
 				qualifierString = qualifier;
 			} else {
-				qualifierString = concatenateDesignations(qualifierConcept);
+				qualifierString = getBestDesignation(qualifierConcept);
 			}
 			element.addModifier(qualifierString);
 		}
@@ -261,23 +261,20 @@ public abstract class Translator {
 
 	public abstract XMLLexicon getXMLLexicon();
 
-	private static String concatenateDesignations(List<Designation> designations) {
-		String res;
-
-		if (designations.isEmpty()) {
-			res = "";
+	private String getBestDesignation(AbstractConcept concept) {
+		int max = -1;
+		String res = "PROBLEM";
+		if (concept == null) {
+			res = null;
 		} else {
-			res = designations.get(0).getValue();
-			for (Designation d : designations.subList(1, designations.size())) {
-				res += "/" + d.getValue();
+			for (Designation d : getDesignations(concept)) {
+				if (d.getTimesUserUsedIt() > max) {
+					max = d.getTimesUserUsedIt();
+					res = d.getValue();
+				}
 			}
 		}
-
 		return res;
-	}
-
-	public String concatenateDesignations(AbstractConcept concept) {
-		return concatenateDesignations(getDesignations(concept));
 	}
 
 	public List<Designation> getDesignations(AbstractConcept concept) {

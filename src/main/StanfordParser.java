@@ -261,11 +261,13 @@ public class StanfordParser {
 		if (t.value().equals("VPinf")) {
 			String verb = getLeaf(t, "VINF");
 			String verbBase = isKnownVerb(verb) ? getBase(verb, LexicalCategory.VERB) : verb;
-			Verb res = (Verb) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), verbBase, Verb.class);
+			Designation res = AI.getFirstDesignationFrom(getUpdatedVocabulary(), verbBase, Verb.class);
 			if (res == null) {
 				throw new WrongGrammarRuleException();
 			}
-			return res;
+			
+			res.incrementTimesUserUsedIt();
+			return ((Verb)res.getDesignatedConcept());
 		}
 		throw new WrongGrammarRuleException();
 	}
@@ -421,7 +423,7 @@ public class StanfordParser {
 	}
 
 	/**
-	 * Returns the concept corresponding to the given noun if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
+	 * Returns the entity corresponding to the given parameters if the AI knows about it, or adds an entry with a new entity and/or concept in the new vocabulary/entities otherwise.
 	 */
 	private IEntity processCorrespondingEntity(Determiner determiner, List<Adjective> qualifiers, String nounDesignation) throws CantFindSuchAnEntityException {
 		IEntity res = null;
@@ -429,9 +431,9 @@ public class StanfordParser {
 			nounDesignation = getBase(nounDesignation, LexicalCategory.NOUN);
 		}
 
-		AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), nounDesignation, AbstractEntityConcept.class);
-
-		if (designatedConcept == null) { // Unknown word
+		Designation designation = AI.getFirstDesignationFrom(getUpdatedVocabulary(), nounDesignation, AbstractEntityConcept.class);
+		
+		if (designation == null) { // Unknown word
 			EntityConcept newConcept = new EntityConcept();
 
 			Entity newEntity = new Entity(newConcept);
@@ -440,12 +442,15 @@ public class StanfordParser {
 			this.newEntities.add(newEntity);
 
 			NounDesignation newDesignation = new NounDesignation(nounDesignation, newConcept);
+			newDesignation.incrementTimesUserUsedIt();
 			newDesignation.setGender(determiner.getGender());
 			newVocabulary.add(newDesignation);
 		} else {
+			AbstractEntityConcept designatedConcept = (AbstractEntityConcept) designation.getDesignatedConcept();
+			designation.incrementTimesUserUsedIt();
+			
 			if (designatedConcept instanceof EntityInterrogative) {
-				EntityInterrogative interrogative = (EntityInterrogative) designatedConcept;
-				res = interrogative;
+				res = (EntityInterrogative) designatedConcept;
 			} else if (designatedConcept instanceof EntityConcept) {
 				if (determiner instanceof IndefiniteDeterminer){
 					Entity newEntity = new Entity((EntityConcept) designatedConcept);
@@ -506,14 +511,15 @@ public class StanfordParser {
 	private AbstractVerb processCorrespondingVerb(String verb) {
 		String designation = isKnownVerb(verb) ? getBase(verb, LexicalCategory.VERB) : verb;
 
-		AbstractVerb res, designatedConcept = (AbstractVerb) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), designation, AbstractVerb.class);
-
-		if (designatedConcept == null) { // Unknown word
+		AbstractVerb res;
+		Designation d = AI.getFirstDesignationFrom(getUpdatedVocabulary(), designation, AbstractVerb.class);
+		
+		if (d == null) { // Unknown word
 			AbstractVerb newConcept = new Verb(Tense.PRESENT, new VerbMeaning());
 			res = newConcept;
 			newVocabulary.add(new Designation(designation, newConcept));
 		} else {
-			res = designatedConcept;
+			res = (AbstractVerb) d.getDesignatedConcept();
 		}
 
 		return res;

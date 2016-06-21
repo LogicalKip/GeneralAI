@@ -36,6 +36,8 @@ import simplenlg.phrasespec.SPhraseSpec;
  * 
  * pronom personnel 3ème personne
  * 
+ * trop de conditionnel (ex : "je saurais")
+ * où gérer les getXXXSentence plus proprement (sans faire plein d'aller-retours entre classes, si possible) ? Une factory ?
  * le temps d'un verbe est dans la phrase, pas dans le verbe lui-même, non ? Du coup, aucune différence entre Verb et VerbMeaning ? à moins que certains verbes aient le sens précis de "tel autre verbe, mais au passé/futur" (ex : devenir = être au futur ?) ?
  * 
  * pluriel
@@ -45,9 +47,11 @@ import simplenlg.phrasespec.SPhraseSpec;
  * comment utiliser dynamiquement SNLG en anglais ou français ?
  * 
  * ordres négatifs ?
+ *
+ * verbes d'état et phrases avec verbe d'état+adjectifs
  * 
- * où gérer les getXXXSentence plus proprement (sans faire plein d'aller-retours entre classes, si possible) ? Une factory ?
- * 
+ * quoi [être] [XXXX] ? si ne sait pas, recherche avec showDef avant de renoncer
+ *
  * remplacer les ajouts manuels de "le", "une", etc (peut-être même "quoi") par des recherches dans le lexique
  * 
  * possible de réduire les redondances dues à l'utilisation de Stanford, SimpleNLG et l'ajout manuel de mots ? (ex de piste : (PROWH dans l'arbre) + ("quoi" signifie QUELLE_ENTITE dans le Translator), surement d'autres trucs)
@@ -84,8 +88,6 @@ import simplenlg.phrasespec.SPhraseSpec;
  * Changer la voix passive selon ce qui était demandé (p.setFeature(Feature.PASSIVE, true);) ? : (qui mange la pomme vs john mange quoi) Passive (eg, "John eats an apple" vs "An apple is eaten by John")
  * 
  * ne pas faire confiance à l'utilisateur
- * 
- * choisir la désignation que l'utilisateur utilise le plus souvent
  * 
  * plusieurs faits dans une phrase (ET, virgule)
  * 
@@ -140,6 +142,7 @@ qui est pas quoi ?
   (NP (DET un) (NC chat)
     (AP (ADJ blanc))))
 [AI] I don't understand that.
+ *
  */
 
 public class AI {
@@ -304,7 +307,7 @@ public class AI {
 		if (declarativeSentence.isInterrogative()) {
 			answer(declarativeSentence);
 		} else if (this.knowledge.contains(declarativeSentence)) {
-			say("I know.");
+			say(getIKnowSentence());
 		} else {
 			this.knowledge.add(declarativeSentence);
 			VerbMeaning meaning = ((Verb) declarativeSentence.getVerb()).getMeaning();
@@ -436,9 +439,16 @@ public class AI {
 	 * Returns a sentence that means "I don't know", without specifying what
 	 */
 	private DeclarativeSentence getIDontKnowSentence() {
-		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), this.translator.getVerbThatMeans(Knowing.getInstance()), null);
+		DeclarativeSentence res = getIKnowSentence();
 		res.setNegative();
 		return res;
+	}
+	
+	/**
+	 * Returns a sentence that means "I know", without specifying what
+	 */
+	private DeclarativeSentence getIKnowSentence() {
+		return new DeclarativeSentence(Myself.getInstance(), this.translator.getVerbThatMeans(Knowing.getInstance()), null);
 	}
 
 	private DeclarativeSentence getStartWhatSentence() {
@@ -506,9 +516,29 @@ public class AI {
 	 */
 	public static List<AbstractConcept> getAllConceptsDesignatedBy(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
 		List<AbstractConcept> res = new LinkedList<AbstractConcept>();
+		for (Designation d : getAllDesignationFrom(vocabulary, designation, classLookedFor)) {
+			res.add(d.getDesignatedConcept());
+		}
+		return res;
+	}
+	
+	public static Designation getFirstDesignationFrom(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
+		Designation res;
+		List<Designation> allConcepts = getAllDesignationFrom(vocabulary, designation, classLookedFor);
+		if (allConcepts.isEmpty()) {
+			res = null;
+		} else {
+			res = allConcepts.get(0);
+		}
+		return res;
+	}
+
+
+	public static List<Designation> getAllDesignationFrom(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
+		List<Designation> res = new LinkedList<Designation>();
 		for (Designation d : vocabulary) {
 			if (d.getValue().equals(designation) && classLookedFor.isInstance(d.getDesignatedConcept())) {
-				res.add(d.getDesignatedConcept());
+				res.add(d);
 			}
 		}
 		return res;

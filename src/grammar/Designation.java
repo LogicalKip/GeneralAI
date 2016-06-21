@@ -10,10 +10,13 @@ package grammar;
 public class Designation {
 	private String value;
 	
+	private int timesUserUsedIt;
+
 	private AbstractConcept designatedConcept;
 
 	public Designation(String value, AbstractConcept designatedConcept) {
 		super();
+		this.timesUserUsedIt = 0;
 		this.value = value;
 		this.designatedConcept = designatedConcept;
 	}
@@ -33,6 +36,14 @@ public class Designation {
 	@Override
 	public String toString() {
 		return value + " -> " + designatedConcept.toString();
+	}
+	
+	public int getTimesUserUsedIt() {
+		return timesUserUsedIt;
+	}
+
+	public void incrementTimesUserUsedIt() {
+		this.timesUserUsedIt++;
 	}
 
 }

@@ -29,5 +29,14 @@ public class Verb extends AbstractVerb {
 	public String toString() {
 		return "[" + meaning + " (" + tense + ")]";
 	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof Verb) {
+			return ((Verb) o).getMeaning().equals(getMeaning()) && ((Verb) o).getTense().equals(getTense());
+		} else {
+			return super.equals(o);
+		}
+	}
 
 }
