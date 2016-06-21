@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import exceptions.NotEnoughKnowledgeException;
 import grammar.AbstractConcept;
 import grammar.AbstractEntityConcept;
 import grammar.Adjective;
@@ -13,15 +14,19 @@ import grammar.DefiniteDeterminer;
 import grammar.Designation;
 import grammar.Determiner;
 import grammar.Entity;
+import grammar.EntityConcept;
+import grammar.EntityInterrogative;
 import grammar.Gender;
 import grammar.IEntity;
 import grammar.IndefiniteDeterminer;
 import grammar.Myself;
 import grammar.NounDesignation;
+import grammar.StartSoftware;
 import grammar.User;
 import grammar.Verb;
 import grammar.VerbMeaning;
 import simplenlg.features.Feature;
+import simplenlg.features.InterrogativeType;
 import simplenlg.features.NumberAgreement;
 import simplenlg.features.Person;
 import simplenlg.features.Tense;
@@ -91,14 +96,18 @@ public abstract class Translator {
 	public void say(String stringToSay) {
 		System.out.println("[AI] " + stringToSay);
 	}
-	
-	
+
+
 
 	/**
 	 * Display an abstract sentence in a way the user can understand, thanks to the language provided by the subclass
 	 */
 	public void say(DeclarativeSentence sentence) {
 		say(realiser.realiseSentence(parseSentence(sentence)));
+	}
+	
+	public void say(SPhraseSpec sentence) {
+		say(realiser.realiseSentence(sentence));
 	}
 
 	public void say(List<DeclarativeSentence> sentences) {
@@ -125,11 +134,28 @@ public abstract class Translator {
 				computeEntityString(s),
 				concatenateDesignations(sentence.getVerb()), 
 				computeEntityString(o));
-		
+
 		p.setFeature(Feature.NEGATED, sentence.isNegative());
-		p.setFeature(Feature.TENSE, Tense.CONDITIONAL);
+		
+
+		if (sentence.isInterrogative()) {
+			if (sentence.getSubject().equals(EntityInterrogative.getInstance())) {
+				p.setFeature(Feature.INTERROGATIVE_TYPE, InterrogativeType.WHO_SUBJECT);
+			}
+			if (sentence.getObject().equals(EntityInterrogative.getInstance())) {
+				p.setFeature(Feature.INTERROGATIVE_TYPE, InterrogativeType.WHAT_OBJECT);// Or InterrogativeType.WHO_OBJECT
+			}
+		} else {
+			p.setFeature(Feature.TENSE, Tense.CONDITIONAL);
+		}
 
 		return p;
+	}
+	
+	public SPhraseSpec getSoftwareStartedSentence(String softwareName) throws NotEnoughKnowledgeException {
+		SPhraseSpec res = nlgFactory.createClause(null, getDesignation(getVerbThatMeans(StartSoftware.getInstance())), softwareName);
+		res.setFeature(Feature.PASSIVE, true);
+		return res;
 	}
 
 	/**
@@ -141,7 +167,7 @@ public abstract class Translator {
 
 		if (entityParam instanceof Entity) {
 			Entity entity = (Entity) entityParam;
-			
+
 			if (entity.equals(Myself.getInstance())) {
 				res = getBaseFirstSingularPersonalPronoun(lexicon);
 			} else if (entity.equals(User.getInstance())) {
@@ -161,7 +187,29 @@ public abstract class Translator {
 		}
 		return res;
 	}
-	
+
+	public String computeEntityString(EntityConcept concept, List<String> qualifiers) {
+		String res;
+
+		NPPhraseSpec element = nlgFactory.createNounPhrase(
+				getDeterminerFor(concept, false), 
+				concatenateDesignations(concept));
+		for (String qualifier : qualifiers) {
+			AbstractConcept qualifierConcept = AI.getFirstConceptDesignatedBy(getVocabulary(), qualifier, Adjective.class);
+			String qualifierString;
+			if (qualifierConcept == null) {
+				qualifierString = qualifier;
+			} else {
+				qualifierString = concatenateDesignations(qualifierConcept);
+			}
+			element.addModifier(qualifierString);
+		}
+
+		res = realiser.realise(element).getRealisation();
+
+		return res;
+	}
+
 	/**
 	 * More or less toString() in the current language
 	 * @return How the entity will be represented as a String after some SimpleNLG processing.
@@ -174,12 +222,19 @@ public abstract class Translator {
 	 * Returns a determiner that fits the gender of one of the entity's designations
 	 */
 	private String getDeterminerFor(Entity entity, boolean definiteDeterminer) {
+		return getDeterminerFor(entity.getConcept(), definiteDeterminer);
+	}
+	
+	/**
+	 * Returns a determiner that fits the gender of one of the entity's designations
+	 */
+	private String getDeterminerFor(EntityConcept entityConcept, boolean definiteDeterminer) {
 		String determiner = "";
 		for (Designation currDeterminer : this.vocabulary) {
 			if (definiteDeterminer ? currDeterminer.getDesignatedConcept() instanceof DefiniteDeterminer
 					: currDeterminer.getDesignatedConcept() instanceof IndefiniteDeterminer) {
 				Gender determinerGender = ((Determiner) currDeterminer.getDesignatedConcept()).getGender();
-				for (Designation currEntityDesignation : getDesignations(entity.getConcept())) {
+				for (Designation currEntityDesignation : getDesignations(entityConcept)) {
 					NounDesignation currNounDesignation = (NounDesignation) currEntityDesignation;
 					if (currNounDesignation.getGender().equals(determinerGender)) {
 						return currDeterminer.getValue();
@@ -236,6 +291,18 @@ public abstract class Translator {
 	}
 	
 	/**
+	 * returns the first designation of given concept, throwing an exception if none is known
+	 */
+	public Designation getDesignation(AbstractConcept concept) throws NotEnoughKnowledgeException {
+		List<Designation> d = getDesignations(concept);
+		if (d.isEmpty()) {
+			throw new NotEnoughKnowledgeException("AI doesn't know a designation for " + concept);
+		} else {
+			return d.get(0);
+		}
+	}
+
+	/**
 	 * Looks in the vocabulary and returns the verb that has given meaning, or null if it isn't there
 	 */
 	public Verb getVerbThatMeans(VerbMeaning m) {
@@ -249,29 +316,29 @@ public abstract class Translator {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Returns "you" (the subject one) in the current language
 	 */
 	public static String getBaseSecondSingularPersonalPronoun(Lexicon lexicon) {
 		return getBaseSingularPersonalPronoun(lexicon, Person.SECOND);
 	}
-	
+
 	/**
 	 * Returns "I" in the current language
 	 */
 	public static String getBaseFirstSingularPersonalPronoun(Lexicon lexicon) {
 		return getBaseSingularPersonalPronoun(lexicon, Person.FIRST);
 	}
-	
+
 
 	public static String getBaseSingularPersonalPronoun(Lexicon lexicon, Person p) {
 		Map<String, Object> features = new HashMap<String, Object>();
 		features.put(Feature.NUMBER, NumberAgreement.SINGULAR);
 		features.put(Feature.PERSON, p);
-		
+
 		WordElement pronoun = lexicon.getWord(LexicalCategory.PRONOUN, features);
-		
+
 		return pronoun.getBaseForm();
 	}
 }

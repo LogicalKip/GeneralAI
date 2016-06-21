@@ -76,7 +76,7 @@ public class StanfordParser {
 	 * start -> order | declarativeSentence
 	 */
 	private Sentence start(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
-		t.pennPrint(); // Uncomment to display the tree, for debug or R&D purposes
+//		t.pennPrint(); // Uncomment to display the tree, for debug or R&D purposes
 		try {
 			return order(t);
 		} catch (WrongGrammarRuleException e) {
@@ -282,10 +282,10 @@ public class StanfordParser {
 
 				List<Adjective> adjectives = new LinkedList<Adjective>();
 				for (String s : getLeaves(t, getAdjectivesValues())) {
-					Adjective adjectiveConcept = (Adjective)AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), s, Adjective.class);
+					Adjective adjectiveConcept = (Adjective) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), s, Adjective.class);
 					if (adjectiveConcept == null) {
 						adjectiveConcept = new Adjective();
-						this.newVocabulary.add(new Designation(s, adjectiveConcept));
+						this.newVocabulary.add(new Designation(s, adjectiveConcept));//TODO word is not in base : problem ?
 					}
 					adjectives.add(adjectiveConcept);
 				}
@@ -455,7 +455,7 @@ public class StanfordParser {
 				} else if (determiner instanceof DefiniteDeterminer) {
 					res = getLastMentionOfA((EntityConcept) designatedConcept, qualifiers);
 					if (res == null) {
-						throw new CantFindSuchAnEntityException((EntityConcept) designatedConcept, qualifiers);
+						throw new CantFindSuchAnEntityException((EntityConcept) designatedConcept, getDesignationsOf(qualifiers, getUpdatedVocabulary()));
 					}
 				} else {
 					System.err.println("There is a 3rd determiner class ? Not expected !");
@@ -465,6 +465,17 @@ public class StanfordParser {
 			}
 		}
 
+		return res;
+	}
+	
+	private static List<String> getDesignationsOf(List<Adjective> adjectives, List<Designation> vocab) {
+		List<String> res = new LinkedList<String>();
+		
+		for (Designation d : vocab) {
+			if (adjectives.contains(d.getDesignatedConcept())) {
+				res.add(d.getValue());
+			}
+		}
 		return res;
 	}
 

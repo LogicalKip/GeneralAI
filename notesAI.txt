@@ -437,3 +437,39 @@ je vois toi
   (COORD
     (VN (CLS je) (V vois))
     (NP (PRO toi))))
+
+stopper firefox
+(SENT
+  (VPinf
+    (VN (VINF stopper))
+    (NP (NC firefox))))
+
+pas stopper firefox
+(SENT
+  (VPinf
+    (VN (ADV pas) (VINF stopper))
+    (NP (NC firefox))))
+
+ne pas stopper firefox
+(SENT
+  (VPinf
+    (VN
+      (MWADV (ADV ne) (ADV pas))
+      (VINF stopper))
+    (NP (NC firefox))))
+
+le chat te mange
+(SENT
+  (NP (DET le) (NC chat))
+  (VN (CLO te) (V mange)))
+
+le chat mange tu
+(SENT
+  (NP (DET le) (NC chat))
+  (VN (V mange) (CLS tu)))
+
+le chat mange toi
+(SENT
+  (NP (DET le) (NC chat))
+  (VN (V mange))
+  (NP (PRO toi)))

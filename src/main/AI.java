@@ -9,6 +9,7 @@ import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 import exceptions.CantFindSuchAnEntityException;
+import exceptions.NotEnoughKnowledgeException;
 import exceptions.ParserException;
 import exceptions.WrongGrammarRuleException;
 import grammar.AbstractConcept;
@@ -16,6 +17,7 @@ import grammar.DeclarativeSentence;
 import grammar.Designation;
 import grammar.Entity;
 import grammar.EntityConcept;
+import grammar.EntityInterrogative;
 import grammar.Explain;
 import grammar.HasSameMeaningAs;
 import grammar.InterrogativeWord;
@@ -27,11 +29,10 @@ import grammar.StartSoftware;
 import grammar.Stop;
 import grammar.Verb;
 import grammar.VerbMeaning;
+import simplenlg.phrasespec.SPhraseSpec;
 
 /*
  * TODO list :
- * 
- * cas particuliers pour répondre à une question négative ou non avec différents faits négatifs ou non (oui, non, je sais pas...)
  * 
  * pronom personnel 3ème personne
  * 
@@ -39,9 +40,13 @@ import grammar.VerbMeaning;
  * 
  * pluriel
  * 
+ * négation : "ne" en plus de "pas", gérer les différents endroits possibles dans la phrase où on peut le trouver
+ * 
  * comment utiliser dynamiquement SNLG en anglais ou français ?
  * 
  * ordres négatifs ?
+ * 
+ * où gérer les getXXXSentence plus proprement (sans faire plein d'aller-retours entre classes, si possible) ? Une factory ?
  * 
  * remplacer les ajouts manuels de "le", "une", etc (peut-être même "quoi") par des recherches dans le lexique
  * 
@@ -53,13 +58,13 @@ import grammar.VerbMeaning;
  * 
  * phrases négatives : vérification des incohérences (que faire si ça arrive ?)
  * 
+ * apostrophes d'élision : "l'homme", "n'est", etc
+ * 
+ * factoriser les messages de NotEnoughKnowledgeException (dans le constructeur) à partir du concept dont la designation est manquante
+ * 
  * gérer plusieurs utilisateurs potentiels (en gardant les infos sur eux), et pouvoir en changer (comment ?)
  * 
  * wiki github pour expliquer les différents cas d'utilisation, limitations selon les OS, installation, indiquer qu'il faut Tree.pennPrint() pour afficher l'arbre
- * 
- * A débugger :
- * quoi signifie quoi ?
- * [AI] Signifierait le chat/minet.
  * 
  * source d'erreur possible (plus tard) dans la grammaire : ça commence par marcher, on crée une entité ou du vocabulaire (dans la liste "newXXX"), puis la suite ne colle pas, donc on revient en arrière, on essaie avec une autre règle, elle marche, on recrée l'entite/vocab, elle marche jusqu'au bout et tout finit bien, mais on a deux fois l'entité/vocab dans la liste (voire deux légèrement différentes, dont une fausse). Faut-il réinitialiser les listes à chaque WrongGrammarRuleException (par exemple, en le forçant, en devant passer les listes au constructeur, qui les vide) ?
  * 
@@ -80,9 +85,7 @@ import grammar.VerbMeaning;
  * 
  * ne pas faire confiance à l'utilisateur
  * 
- * designation random ou toutes quand plusieurs (pour say)
- * 
- * processNoSuchEntityException : utiliser les adjectifs pour décrire ce qui n'a pas pu être trouvé
+ * choisir la désignation que l'utilisateur utilise le plus souvent
  * 
  * plusieurs faits dans une phrase (ET, virgule)
  * 
@@ -96,11 +99,10 @@ import grammar.VerbMeaning;
  * 
  * faire des interfaces au lieu de classes pour les concepts pour qu'un mot puisse en etre plusieurs à la fois ?
  * 
- * Lors de la grammaire : et si jamais plusieurs fois le même (nouveau) mot dans une phrase déclarative ? Comme on utilise l'ancien vocab (et pas le nouveau), il n'apparait pas, n'apparait toujours pas, et on crée deux nouveaux concepts pour ce mot au lieu d'un
- * 
  * Deux désignations d'un genre différent peuvent (probablement) désigner le même concept. C'est le mot/désignation qui a un genre au final, pas le concept lui-même
  * 
  * A debugger :
+ * 
 [AI] Initializing...
 [AI] Ready.
 un chat blanc mange une croquette
@@ -108,6 +110,36 @@ un chat blanc mange une croquette
 qui mange quoi ?
 [AI] Le chat blanc mangerait **le** croquette.
  car le mot n'est pas dans le lexique. Même en demandant un "la", ça met un "le" par défaut car le genre n'est pas connu dans le lexique je suppose
+ *
+ quoi signifie quoi ?
+ [AI] Signifierait le chat/minet.
+ *
+ qui regarde pas quoi ?
+(SENT
+  (NP (PROREL qui))
+  (VN (V regarde))
+  (ADV pas)
+  (NP (PROWH quoi))
+  (PUNC ?))
+[AI] Le chat ne regarderait pas la souris.
+qui est pas quoi ?
+(SENT
+  (NP (PROREL qui))
+  (VN (V est))
+  (MWADV (ADV pas) (PRO quoi))
+  (PUNC ?))
+[AI] I don't understand that.
+ *
+ un mignon petit chat noir regarde un chat blanc
+(SENT
+  (NP (DET un)
+    (AP (ADJ mignon)))
+  (NP (ADJ petit) (NC chat)
+    (AP (ADJ noir)))
+  (VN (V regarde))
+  (NP (DET un) (NC chat)
+    (AP (ADJ blanc))))
+[AI] I don't understand that.
  */
 
 public class AI {
@@ -155,7 +187,7 @@ public class AI {
 
 					processDeclarativeSentenceFromUser((DeclarativeSentence) parsedInput, parser.getNewEntities());
 				}
-			} catch (ParserException e) {
+			} catch (ParserException | NotEnoughKnowledgeException e) {
 				say(e.getMessage());
 			} catch (CantFindSuchAnEntityException e) {
 				processNoSuchEntityException(e);
@@ -167,7 +199,7 @@ public class AI {
 	}
 
 	private void processNoSuchEntityException(CantFindSuchAnEntityException exception) {
-		String res = "I don't know of any such " + translator.concatenateDesignations(exception.getConcept()) + ". ";
+		String res = "I'm not aware of " + translator.computeEntityString(exception.getConcept(), exception.getQualifiers()) + ". ";
 
 		List<Entity> similarEntities = new LinkedList<Entity>();
 		for (Entity e : entitiesKnown) {
@@ -199,7 +231,7 @@ public class AI {
 		// Not much for now !
 	}
 
-	private void obeyOrder(Order order) {
+	private void obeyOrder(Order order) throws NotEnoughKnowledgeException {
 		VerbMeaning orderMeaning = order.getVerb().getMeaning();
 		if (orderMeaning instanceof Stop) {
 			if (order.getObject() == null) {
@@ -225,14 +257,14 @@ public class AI {
 		}
 	}
 
-	private void startSoftware(String software) {
+	private void startSoftware(String software) throws NotEnoughKnowledgeException {
 		if (software == null) {
-			say("Start what ?");
+			say(getStartWhatSentence());
 		} else {
 			try {
 				String command = software.toLowerCase();
 				executeBackgroundCommand(command);
-				say(software + " started");
+				say(translator.getSoftwareStartedSentence(software));
 			} catch (IOException e) {
 				say("I don't know any software named " + software);
 			}
@@ -277,24 +309,26 @@ public class AI {
 			this.knowledge.add(declarativeSentence);
 			VerbMeaning meaning = ((Verb) declarativeSentence.getVerb()).getMeaning();
 
-			if (meaning instanceof HasSameMeaningAs &&
-					declarativeSentence.getSubject() instanceof Entity &&
-					declarativeSentence.getObject() instanceof Entity) {
-				mergeEntityConcepts(
-						((Entity)declarativeSentence.getSubject()).getConcept(), 
-						((Entity)declarativeSentence.getObject()).getConcept());
+			if (meaning instanceof HasSameMeaningAs) {
+				if (declarativeSentence.getSubject() instanceof Entity &&
+						declarativeSentence.getObject() instanceof Entity) {
+					mergeEntityConcepts(
+							((Entity)declarativeSentence.getSubject()).getConcept(), 
+							((Entity)declarativeSentence.getObject()).getConcept());
+				}
 			} else {
 				this.entitiesKnown.addAll(newEntities);
 			}
-
 			removeDuplicatesFromKnowledge();
 			say("Compris.");
 		}
 
 		// Move mentioned entities at the end so that, in the future, given an incomplete description of an entity, we may pick those at the end because they are the most likely to be referred to (they were the last mentioned)
 		for (Entity e : declarativeSentence.getMentionedEntities()) {
-			this.entitiesKnown.remove(e);
-			this.entitiesKnown.add(e);
+			if (entitiesKnown.contains(e)) {
+				this.entitiesKnown.remove(e);
+				this.entitiesKnown.add(e);
+			}
 		}
 	}
 
@@ -355,7 +389,7 @@ public class AI {
 					break;
 				}
 			}
-			
+
 			for (DeclarativeSentence currFact : this.knowledge) {
 				boolean answersTheQuestion = true;
 				Object currFactConcepts[] = currFact.split();
@@ -397,7 +431,7 @@ public class AI {
 			System.err.println("Can't answer what is not a question. Should never happen :/");
 		}
 	}
-	
+
 	/**
 	 * Returns a sentence that means "I don't know", without specifying what
 	 */
@@ -406,9 +440,23 @@ public class AI {
 		res.setNegative();
 		return res;
 	}
+
+	private DeclarativeSentence getStartWhatSentence() {
+		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), translator.getVerbThatMeans(StartSoftware.getInstance()), EntityInterrogative.getInstance());
+		res.setInterrogative(true);
+		return res;
+	}
 	
-
-
+	private DeclarativeSentence getIStopSentence() {
+		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), translator.getVerbThatMeans(Stop.getInstance()), Myself.getInstance());
+		res.setInterrogative(true);
+		return res;
+	}
+	
+	private void say(SPhraseSpec s) {
+		this.translator.say(s);
+	}
+	
 	private void say(String s) {
 		this.translator.say(s);
 	}
@@ -416,14 +464,14 @@ public class AI {
 	private void say(List<DeclarativeSentence> s) {
 		this.translator.say(s);
 	}
-	
+
 	private void say(DeclarativeSentence s) {
 		this.translator.say(s);
 	}
 
 
 	private void terminate() {
-		say("Stopping.");
+		say(getIStopSentence());
 		if (kb != null) {
 			kb.close();
 		}
@@ -470,7 +518,7 @@ public class AI {
 	public List<Entity> getEntitiesKnown() {
 		return entitiesKnown;
 	}
-	
+
 	private boolean isOnWindows() {
 		return System.getProperty("os.name").contains("Windows");
 	}
