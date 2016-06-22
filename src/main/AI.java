@@ -47,7 +47,7 @@ import simplenlg.phrasespec.SPhraseSpec;
  * comment utiliser dynamiquement SNLG en anglais ou français ?
  * 
  * ordres négatifs ?
- *
+ * 
  * verbes d'état et phrases avec verbe d'état+adjectifs
  * 
  * quoi [être] [XXXX] ? si ne sait pas, recherche avec showDef avant de renoncer
@@ -62,7 +62,7 @@ import simplenlg.phrasespec.SPhraseSpec;
  * 
  * phrases négatives : vérification des incohérences (que faire si ça arrive ?)
  * 
- * apostrophes d'élision : "l'homme", "n'est", etc
+ * apostrophes d'élision (en entrée) : "l'homme", "n'est", etc
  * 
  * factoriser les messages de NotEnoughKnowledgeException (dans le constructeur) à partir du concept dont la designation est manquante
  * 
@@ -79,7 +79,7 @@ import simplenlg.phrasespec.SPhraseSpec;
  * Order utilise des ~Entity au lieu de String. 
  * Noms propres
  * 
- * "There is" + new entity (or old entity -> "I know")
+ * "There is" + new entity
  * 
  * gérer les "~tokens" de la grammaire avec des Tree faits main (notamment pour des cas un peu compliqués très différents des autres langues, comme "il y a" -> (VN (CLS il) (CLO y) (V a)))
  *
@@ -242,7 +242,7 @@ public class AI {
 			} else {
 				try {
 					executeCommand("killall " + order.getObject());
-					say(order.getObject() + " stopped");
+					say(translator.getSoftwareStoppedSentence(order.getObject()));
 				} catch (IOException e) {
 					say("I don't know how to do that");
 				} catch (NoSuchElementException e) {

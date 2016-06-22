@@ -22,6 +22,7 @@ import grammar.IndefiniteDeterminer;
 import grammar.Myself;
 import grammar.NounDesignation;
 import grammar.StartSoftware;
+import grammar.Stop;
 import grammar.User;
 import grammar.Verb;
 import grammar.VerbMeaning;
@@ -153,8 +154,15 @@ public abstract class Translator {
 	}
 	
 	public SPhraseSpec getSoftwareStartedSentence(String softwareName) throws NotEnoughKnowledgeException {
-		SPhraseSpec res = nlgFactory.createClause(null, getDesignation(getVerbThatMeans(StartSoftware.getInstance())).getValue(), softwareName);
+		SPhraseSpec res = nlgFactory.createClause(null, getBestDesignation(getVerbThatMeans(StartSoftware.getInstance())), softwareName);
 		res.setFeature(Feature.PASSIVE, true);
+		return res;
+	}
+	
+	public SPhraseSpec getSoftwareStoppedSentence(String softwareName) throws NotEnoughKnowledgeException {
+		SPhraseSpec res = nlgFactory.createClause(null, getBestDesignation(getVerbThatMeans(Stop.getInstance())), softwareName);
+		res.setFeature(Feature.PASSIVE, true);
+		res.setFeature(Feature.TENSE, Tense.PAST);
 		return res;
 	}
 
@@ -290,7 +298,7 @@ public abstract class Translator {
 	/**
 	 * returns the first designation of given concept, throwing an exception if none is known
 	 */
-	public Designation getDesignation(AbstractConcept concept) throws NotEnoughKnowledgeException {
+	public Designation getFirstDesignation(AbstractConcept concept) throws NotEnoughKnowledgeException {
 		List<Designation> d = getDesignations(concept);
 		if (d.isEmpty()) {
 			throw new NotEnoughKnowledgeException("AI doesn't know a designation for " + concept);
