@@ -11,6 +11,7 @@ import grammar.Knowing;
 import grammar.Not;
 import grammar.StartSoftware;
 import grammar.Stop;
+import grammar.Understand;
 import simplenlg.features.Person;
 import simplenlg.lexicon.XMLLexicon;
 
@@ -33,6 +34,8 @@ public class FrenchTranslator extends Translator {
 		
 		this.vocabulary.add(new Designation("savoir",  Knowing.getInstance()));
 		this.vocabulary.add(new Designation("définir", Explain.getInstance()));
+		this.vocabulary.add(new Designation("comprendre", Understand.getInstance()));
+		
 
 		this.vocabulary.add(new Designation("pas", Not.getInstance()));
 

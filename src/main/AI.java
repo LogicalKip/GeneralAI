@@ -27,12 +27,15 @@ import grammar.Order;
 import grammar.Sentence;
 import grammar.StartSoftware;
 import grammar.Stop;
+import grammar.Understand;
 import grammar.Verb;
 import simplenlg.features.Tense;
-import simplenlg.phrasespec.SPhraseSpec;
+import simplenlg.framework.NLGElement;
 
 /*
  * TODO list :
+ * 
+ * mergeEntities : adjectifs à fusionner
  * 
  * pronom personnel 3ème personne
  * 
@@ -60,7 +63,7 @@ import simplenlg.phrasespec.SPhraseSpec;
  * 
  * faire en sorte que les say en dur soient des Sentence créées dynamiquement (donc dans le langage de l'utilisateur), comme pour "je ne sais pas"
  * 
- * phrases négatives : vérification des incohérences (que faire si ça arrive ?)
+ * phrases négatives : vérification des incohérences (que faire si ça arrive ?) (on risque aussi de mergeEntities 2 entités qui possèdent des phrases négatives mutuellement exclusives)
  * 
  * apostrophes d'élision (en entrée) : "l'homme", "n'est", etc
  * 
@@ -104,6 +107,8 @@ import simplenlg.phrasespec.SPhraseSpec;
  * Deux désignations d'un genre différent peuvent (probablement) désigner le même concept. C'est le mot/désignation qui a un genre au final, pas le concept lui-même
  * 
  * A debugger :
+je mange la souris ?
+[AI] Je ne comprends pas, monsieur.
  * 
 [AI] Initializing...
 [AI] Ready.
@@ -184,8 +189,7 @@ public class AI {
 
 		while (! stopPrgm) {
 			try {
-				String userInput = getInput();
-				Sentence parsedInput = parser.parse(userInput);
+				Sentence parsedInput = parser.parse(getInput());
 
 				if (parsedInput instanceof Order) {
 					obeyOrder((Order) parsedInput);
@@ -200,7 +204,7 @@ public class AI {
 			} catch (CantFindSuchAnEntityException e) {
 				processNoSuchEntityException(e);
 			} catch (WrongGrammarRuleException e) {
-				say("I don't understand that.");
+				say(getIDontUnderstandSentence());
 			}
 		}
 		terminate();
@@ -332,7 +336,7 @@ public class AI {
 				this.entitiesKnown.addAll(newEntities);
 			}
 			removeDuplicatesFromKnowledge();
-			say("Understood.");
+			say(translator.getUnderstoodSentence());
 		}
 
 		// Move mentioned entities at the end so that, in the future, given an incomplete description of an entity, we may pick those at the end because they are the most likely to be referred to (they were the last mentioned)
@@ -475,11 +479,11 @@ public class AI {
 		res.setInterrogative(true);
 		return res;
 	}
-	
+
 	private DeclarativeSentence getStartWhatSentence() {
 		return getVerbWhatSentence(StartSoftware.getInstance());
 	}
-	
+
 	private DeclarativeSentence getExplainWhatSentence() {
 		return getVerbWhatSentence(Explain.getInstance());
 	}
@@ -489,7 +493,13 @@ public class AI {
 		return res;
 	}
 
-	private void say(SPhraseSpec s) {
+	private DeclarativeSentence getIDontUnderstandSentence() {
+		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), Understand.getInstance(), null);
+		res.setNegative();
+		return res;
+	}
+
+	private void say(NLGElement s) {
 		this.translator.say(s);
 	}
 

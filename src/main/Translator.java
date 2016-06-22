@@ -23,8 +23,10 @@ import grammar.Myself;
 import grammar.NounDesignation;
 import grammar.StartSoftware;
 import grammar.Stop;
+import grammar.Understand;
 import grammar.User;
 import simplenlg.features.Feature;
+import simplenlg.features.Form;
 import simplenlg.features.InterrogativeType;
 import simplenlg.features.NumberAgreement;
 import simplenlg.features.Person;
@@ -38,6 +40,7 @@ import simplenlg.lexicon.Lexicon;
 import simplenlg.lexicon.XMLLexicon;
 import simplenlg.phrasespec.NPPhraseSpec;
 import simplenlg.phrasespec.SPhraseSpec;
+import simplenlg.phrasespec.VPPhraseSpec;
 import simplenlg.realiser.Realiser;
 
 /**
@@ -106,7 +109,7 @@ public abstract class Translator {
 		say(realiser.realiseSentence(parseSentence(sentence, true)));
 	}
 	
-	public void say(SPhraseSpec sentence) {
+	public void say(NLGElement sentence) {
 		say(realiser.realiseSentence(sentence));
 	}
 
@@ -172,6 +175,13 @@ public abstract class Translator {
 		res.setFeature(Feature.TENSE, Tense.PAST);
 		return res;
 	}
+	
+	public VPPhraseSpec getUnderstoodSentence() {
+		VPPhraseSpec res = nlgFactory.createVerbPhrase(getBestDesignation(Understand.getInstance()));
+		res.setFeature(Feature.FORM, Form.PAST_PARTICIPLE);
+		return res;
+	}
+
 
 	/**
 	 * More or less toString() in the current language
