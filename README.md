@@ -3,7 +3,7 @@ You say something to the AI, and the AI says or does something in response. Uses
 
 Input/output currently in French. Some abstraction has been made to allow English, but that would probably still require some tweaking, if at all possible (SimpleNLG-EnFr seems to be made for French).
 
-Some libraries couldn't be pushed because they were too heavy. To be able to compile, please extract http://nlp.stanford.edu/software/stanford-parser-full-2015-12-09.zip, copy all .jar files in the lib folder and add them to the build path.
+Some libraries couldn't be pushed because they were too heavy. To be able to compile, please extract http://nlp.stanford.edu/software/stanford-parser-full-2015-12-09.zip, copy all .jar files in the lib folder and add all .jar to the build path.
 To use the word defining feature, add showDef to your PATH.
 
 Intended for Linux. Everything works as well on Windows, except defining words, starting and stopping programs (though if you know how to do those on Windows, you're welcome to help).
@@ -15,7 +15,7 @@ Stuff to know before using the AI :
 - I wasn't able to recognize imperative with Stanford NLP, therefore the infinitive will be used instead for now (not that it would change much if english was used).
 - Nouns that are not in the lexicon are considered of the default gender by SNLG, even if given a determiner of the proper gender. Therefore the output may show incorrect genders if you use unusual nouns, but that'll have to do for now.
 - Use question marks iff you ask questions.
-- For now, the software starting feature only works (on Linux and) if the PATH contains a command which is the name of the software (i.e "démarrer firefox" works because "firefox" is also the bash command). This also valid to kill the processes.
+- For now, the software starting feature only works (on Linux and) if the PATH contains a command which is the name of the software (i.e "démarrer firefox" works because "firefox" is also the bash command). This is also true when killing the processes.
 - You may use first and second singular personnal pronouns ("je" and "tu") as subjects only, even though the AI may use them otherwise during output. The other pronouns are not yet implemented.
 - Don't use capital letters (except in the name of the software you want to start/kill, since it will be lowercased anyway)
 - Don't use plural.
@@ -40,14 +40,13 @@ la souris mange quoi ?
 
 la blanche souris mange quoi ?
 
-un minet mange un oiseau beau
-un minet mange un bel oiseau
+un minet mange un oiseau beau (or "un minet mange un bel oiseau")
 
 qui mangerait qui ?
 
 un minet signifie un chat
 
-la souris ne mange pas le chat
+la souris ne mange pas le minet
 
 quoi mange quoi ?
 
@@ -56,6 +55,8 @@ quoi ne mange pas quoi ?
 la souris mange le chat ?
 
 la souris ne mange pas le chat ?
+
+qui mangera quoi ?
 
 je comprends le fonctionnement
 
