@@ -24,8 +24,6 @@ import grammar.NounDesignation;
 import grammar.StartSoftware;
 import grammar.Stop;
 import grammar.User;
-import grammar.Verb;
-import grammar.VerbMeaning;
 import simplenlg.features.Feature;
 import simplenlg.features.InterrogativeType;
 import simplenlg.features.NumberAgreement;
@@ -33,6 +31,7 @@ import simplenlg.features.Person;
 import simplenlg.features.Tense;
 import simplenlg.framework.CoordinatedPhraseElement;
 import simplenlg.framework.LexicalCategory;
+import simplenlg.framework.NLGElement;
 import simplenlg.framework.NLGFactory;
 import simplenlg.framework.WordElement;
 import simplenlg.lexicon.Lexicon;
@@ -104,7 +103,7 @@ public abstract class Translator {
 	 * Display an abstract sentence in a way the user can understand, thanks to the language provided by the subclass
 	 */
 	public void say(DeclarativeSentence sentence) {
-		say(realiser.realiseSentence(parseSentence(sentence)));
+		say(realiser.realiseSentence(parseSentence(sentence, true)));
 	}
 	
 	public void say(SPhraseSpec sentence) {
@@ -112,11 +111,19 @@ public abstract class Translator {
 	}
 
 	public void say(List<DeclarativeSentence> sentences) {
-		CoordinatedPhraseElement c = nlgFactory.createCoordinatedPhrase();
+		CoordinatedPhraseElement coordination = nlgFactory.createCoordinatedPhrase();
 		for (DeclarativeSentence s : sentences) {
-			c.addCoordinate(parseSentence(s));
+			coordination.addCoordinate(parseSentence(s, false));
 		}
-		say(realiser.realiseSentence(c));
+		say(realiser.realiseSentence(addApostrophe(coordination)));
+	}
+	
+	private NLGElement addApostrophe(NLGElement e) {
+		CoordinatedPhraseElement politeCoordination = nlgFactory.createCoordinatedPhrase();
+		politeCoordination.addCoordinate(e);
+		politeCoordination.addCoordinate(getDefaultUserApostrophe());
+		politeCoordination.setConjunction("");
+		return politeCoordination;
 	}
 
 	/**
@@ -127,18 +134,18 @@ public abstract class Translator {
 	/**
 	 * From a {@link DeclarativeSentence}, makes an object that can be computed by the simpleNLG library, and possibly adds some features to improve the result
 	 */
-	private SPhraseSpec parseSentence(DeclarativeSentence sentence) {
+	private NLGElement parseSentence(DeclarativeSentence sentence, boolean addApostrophe) {
 		IEntity s = sentence.getSubject();
 		IEntity o = sentence.getObject();
 
-		SPhraseSpec p = nlgFactory.createClause(
+		NLGElement p = nlgFactory.createClause(
 				computeEntityString(s),
 				getBestDesignation(sentence.getVerb()), 
 				computeEntityString(o));
-
-		p.setFeature(Feature.NEGATED, sentence.isNegative());
 		
-
+		p.setFeature(Feature.NEGATED, sentence.isNegative());
+		p.setFeature(Feature.TENSE, sentence.getTense());
+		
 		if (sentence.isInterrogative()) {
 			if (sentence.getSubject().equals(EntityInterrogative.getInstance())) {
 				p.setFeature(Feature.INTERROGATIVE_TYPE, InterrogativeType.WHO_SUBJECT);
@@ -146,21 +153,21 @@ public abstract class Translator {
 			if (sentence.getObject().equals(EntityInterrogative.getInstance())) {
 				p.setFeature(Feature.INTERROGATIVE_TYPE, InterrogativeType.WHAT_OBJECT);// Or InterrogativeType.WHO_OBJECT
 			}
-		} else {
-			p.setFeature(Feature.TENSE, Tense.CONDITIONAL);
+		} else if (addApostrophe) {		
+			p = addApostrophe(p);
 		}
-
+		
 		return p;
 	}
 	
 	public SPhraseSpec getSoftwareStartedSentence(String softwareName) throws NotEnoughKnowledgeException {
-		SPhraseSpec res = nlgFactory.createClause(null, getBestDesignation(getVerbThatMeans(StartSoftware.getInstance())), softwareName);
+		SPhraseSpec res = nlgFactory.createClause(null, getBestDesignation(StartSoftware.getInstance()), softwareName);
 		res.setFeature(Feature.PASSIVE, true);
 		return res;
 	}
 	
 	public SPhraseSpec getSoftwareStoppedSentence(String softwareName) throws NotEnoughKnowledgeException {
-		SPhraseSpec res = nlgFactory.createClause(null, getBestDesignation(getVerbThatMeans(Stop.getInstance())), softwareName);
+		SPhraseSpec res = nlgFactory.createClause(null, getBestDesignation(Stop.getInstance()), softwareName);
 		res.setFeature(Feature.PASSIVE, true);
 		res.setFeature(Feature.TENSE, Tense.PAST);
 		return res;
@@ -179,7 +186,7 @@ public abstract class Translator {
 			if (entity.equals(Myself.getInstance())) {
 				res = getBaseFirstSingularPersonalPronoun(lexicon);
 			} else if (entity.equals(User.getInstance())) {
-				res = getBaseSecondSingularPersonalPronoun(lexicon);
+				res = getPolitenessPersonalPronoun();
 			} else {
 				NPPhraseSpec element = nlgFactory.createNounPhrase(
 						definiteDeterminer ? getDefiniteDeterminerFor(entity) : getIndefiniteDeterminerFor(entity),
@@ -308,21 +315,6 @@ public abstract class Translator {
 	}
 
 	/**
-	 * Looks in the vocabulary and returns the verb that has given meaning, or null if it isn't there
-	 */
-	public Verb getVerbThatMeans(VerbMeaning m) {
-		for (Designation d : this.vocabulary) {
-			if (d.getDesignatedConcept() instanceof Verb) {
-				Verb v = (Verb) d.getDesignatedConcept();
-				if (v.getMeaning().equals(m)) {
-					return v;
-				}
-			}
-		}
-		return null;
-	}
-
-	/**
 	 * Returns "you" (the subject one) in the current language
 	 */
 	public static String getBaseSecondSingularPersonalPronoun(Lexicon lexicon) {
@@ -346,4 +338,29 @@ public abstract class Translator {
 
 		return pronoun.getBaseForm();
 	}
+	
+	public static String getBasePluralPersonalPronoun(Lexicon lexicon, Person p) {
+		Map<String, Object> features = new HashMap<String, Object>();
+		features.put(Feature.NUMBER, NumberAgreement.PLURAL);
+		features.put(Feature.PERSON, p);
+
+		WordElement pronoun = lexicon.getWord(LexicalCategory.PRONOUN, features);
+
+		return pronoun.getBaseForm();
+	}
+	
+	/**
+	 * In some languages, there is a more polite way to say "you" (the singular one).
+	 * Override with a call to {@link Translator#getBaseSingularPersonalPronoun(Lexicon, Person)} or {@link Translator#getBasePluralPersonalPronoun(Lexicon, Person)} if needed
+	 */
+	protected String getPolitenessPersonalPronoun() {
+		return getBaseSecondSingularPersonalPronoun(lexicon);
+	}
+	
+	
+	/**
+	 * Returns a way to call the user at first, such as "sir", or even a name. May be added to the end of sentences
+	 */
+	public abstract String getDefaultUserApostrophe();
+	
 }

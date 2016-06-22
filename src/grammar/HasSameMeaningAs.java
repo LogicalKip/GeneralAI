@@ -7,7 +7,7 @@ package grammar;
  * @author charles
  *
  */
-public class HasSameMeaningAs extends VerbMeaning {
+public class HasSameMeaningAs extends Verb {
 	private HasSameMeaningAs() {
 	}
 	

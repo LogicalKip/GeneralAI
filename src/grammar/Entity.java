@@ -6,8 +6,6 @@ import java.util.List;
 /**
  * Think of {@link EntityConcept} objects as classes and of {@link Entity} objects as instances of classes.
  * E.g : Mr snuggles, a specific cat with a white spot on the head, is an {@link Entity}. For the concept of a cat (mammal, small, etc), see {@link EntityConcept}
- * @author charles
- *
  */
 public class Entity implements IEntity {
 	private EntityConcept concept;

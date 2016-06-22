@@ -3,21 +3,12 @@ package grammar;
 import java.util.LinkedList;
 import java.util.List;
 
-public class DeclarativeSentence extends Sentence {
-	
+import simplenlg.features.Tense;
+
+public class DeclarativeSentence extends Sentence implements Cloneable {
+	private Tense tense;
+
 	private boolean isNegative;
-
-	public boolean isNegative() {
-		return isNegative;
-	}
-
-	public void setNegative(boolean isNegative) {
-		this.isNegative = isNegative;
-	}
-	
-	public void setNegative() {
-		this.isNegative = true;
-	}
 
 	private IEntity subject;
 
@@ -33,6 +24,7 @@ public class DeclarativeSentence extends Sentence {
 		this.object = object;
 		this.interrogative = false;
 		this.isNegative = false;
+		this.tense = Tense.PRESENT;
 	}
 	
 	public Object[] split() {
@@ -94,6 +86,31 @@ public class DeclarativeSentence extends Sentence {
 		if (object instanceof Entity) {
 			list.add((Entity)object);
 		}
+	}
+	
+	public boolean isNegative() {
+		return isNegative;
+	}
+
+	public void setNegative(boolean isNegative) {
+		this.isNegative = isNegative;
+	}
+	
+	public void setNegative() {
+		this.isNegative = true;
+	}
+
+	public Tense getTense() {
+		return tense;
+	}
+
+	public void setTense(Tense tense) {
+		this.tense = tense;
+	}
+	
+	@Override
+	public Object clone() throws CloneNotSupportedException {
+		return super.clone();
 	}
 
 }

@@ -1,6 +1,6 @@
 package grammar;
 
-public class Explain extends VerbMeaning {
+public class Explain extends Verb {
 	private Explain() {
 	}
 	

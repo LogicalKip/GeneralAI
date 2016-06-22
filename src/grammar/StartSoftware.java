@@ -5,7 +5,7 @@ package grammar;
  * @author charles
  *
  */
-public class StartSoftware extends VerbMeaning {
+public class StartSoftware extends Verb {
 	private StartSoftware() {
 	}
 	

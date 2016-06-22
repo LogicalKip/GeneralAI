@@ -6,8 +6,6 @@ package grammar;
 /**
  * Refers to the concept of "what entity" in a question. In English, could be designated by "who" or "what"
  * A singleton
- * @author charles
- *
  */
 public class EntityInterrogative extends AbstractEntityConcept implements InterrogativeWord, IEntity {
 	

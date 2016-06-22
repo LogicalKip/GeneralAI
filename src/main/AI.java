@@ -28,7 +28,7 @@ import grammar.Sentence;
 import grammar.StartSoftware;
 import grammar.Stop;
 import grammar.Verb;
-import grammar.VerbMeaning;
+import simplenlg.features.Tense;
 import simplenlg.phrasespec.SPhraseSpec;
 
 /*
@@ -36,9 +36,9 @@ import simplenlg.phrasespec.SPhraseSpec;
  * 
  * pronom personnel 3ème personne
  * 
- * trop de conditionnel (ex : "je saurais")
+ * dire monsieur aléatoirement au lieu de tout le temps
+ * 
  * où gérer les getXXXSentence plus proprement (sans faire plein d'aller-retours entre classes, si possible) ? Une factory ?
- * le temps d'un verbe est dans la phrase, pas dans le verbe lui-même, non ? Du coup, aucune différence entre Verb et VerbMeaning ? à moins que certains verbes aient le sens précis de "tel autre verbe, mais au passé/futur" (ex : devenir = être au futur ?) ?
  * 
  * pluriel
  * 
@@ -143,6 +143,11 @@ qui est pas quoi ?
     (AP (ADJ blanc))))
 [AI] I don't understand that.
  *
+ le chat mange pas quoi ?
+[AI] 
+ *
+ le chat mange le chien
+[AI] I don't understand that.
  */
 
 public class AI {
@@ -235,7 +240,7 @@ public class AI {
 	}
 
 	private void obeyOrder(Order order) throws NotEnoughKnowledgeException {
-		VerbMeaning orderMeaning = order.getVerb().getMeaning();
+		Verb orderMeaning = order.getVerb();
 		if (orderMeaning instanceof Stop) {
 			if (order.getObject() == null) {
 				this.stopPrgm = true;
@@ -252,10 +257,14 @@ public class AI {
 		} else if (orderMeaning instanceof StartSoftware) {
 			startSoftware(order.getObject());
 		} else if (orderMeaning instanceof Explain) {
-			try {
-				say(executeCommand("./showDef " + translator.getLanguageParameterForGetDefProgram() + " " + order.getObject()));
-			} catch (IOException e) {
-				say("I don't know how to explain that");
+			if (order.getObject() == null) {
+				say(getExplainWhatSentence());
+			} else {
+				try {
+					say(executeCommand("./showDef " + translator.getLanguageParameterForGetDefProgram() + " " + order.getObject()));
+				} catch (IOException e) {
+					say("I don't know how to explain that");
+				}
 			}
 		}
 	}
@@ -310,7 +319,7 @@ public class AI {
 			say(getIKnowSentence());
 		} else {
 			this.knowledge.add(declarativeSentence);
-			VerbMeaning meaning = ((Verb) declarativeSentence.getVerb()).getMeaning();
+			Verb meaning = (Verb) declarativeSentence.getVerb();
 
 			if (meaning instanceof HasSameMeaningAs) {
 				if (declarativeSentence.getSubject() instanceof Entity &&
@@ -323,7 +332,7 @@ public class AI {
 				this.entitiesKnown.addAll(newEntities);
 			}
 			removeDuplicatesFromKnowledge();
-			say("Compris.");
+			say("Understood.");
 		}
 
 		// Move mentioned entities at the end so that, in the future, given an incomplete description of an entity, we may pick those at the end because they are the most likely to be referred to (they were the last mentioned)
@@ -424,7 +433,14 @@ public class AI {
 					List<DeclarativeSentence> actualAnswers = new LinkedList<DeclarativeSentence>();
 					for (DeclarativeSentence a : answers) {
 						if (a.isNegative() == question.isNegative()) {
-							actualAnswers.add(a);
+							DeclarativeSentence actualAnswer = null;
+							try {
+								actualAnswer = (DeclarativeSentence) a.clone();
+							} catch (CloneNotSupportedException e) {
+								e.printStackTrace();
+							}
+							actualAnswer.setTense(Tense.CONDITIONAL);
+							actualAnswers.add(actualAnswer);
 						}
 					}
 					say(actualAnswers);	
@@ -443,30 +459,40 @@ public class AI {
 		res.setNegative();
 		return res;
 	}
-	
+
 	/**
 	 * Returns a sentence that means "I know", without specifying what
 	 */
 	private DeclarativeSentence getIKnowSentence() {
-		return new DeclarativeSentence(Myself.getInstance(), this.translator.getVerbThatMeans(Knowing.getInstance()), null);
+		return new DeclarativeSentence(Myself.getInstance(), Knowing.getInstance(), null);
 	}
 
+	/**
+	 * "What do I [verb] ?"
+	 */
+	private DeclarativeSentence getVerbWhatSentence(Verb verb) {
+		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), verb, EntityInterrogative.getInstance());
+		res.setInterrogative(true);
+		return res;
+	}
+	
 	private DeclarativeSentence getStartWhatSentence() {
-		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), translator.getVerbThatMeans(StartSoftware.getInstance()), EntityInterrogative.getInstance());
-		res.setInterrogative(true);
-		return res;
+		return getVerbWhatSentence(StartSoftware.getInstance());
 	}
 	
-	private DeclarativeSentence getIStopSentence() {
-		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), translator.getVerbThatMeans(Stop.getInstance()), Myself.getInstance());
-		res.setInterrogative(true);
+	private DeclarativeSentence getExplainWhatSentence() {
+		return getVerbWhatSentence(Explain.getInstance());
+	}
+
+	private DeclarativeSentence getIStopMyselfSentence() {
+		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), Stop.getInstance(), Myself.getInstance());
 		return res;
 	}
-	
+
 	private void say(SPhraseSpec s) {
 		this.translator.say(s);
 	}
-	
+
 	private void say(String s) {
 		this.translator.say(s);
 	}
@@ -481,7 +507,7 @@ public class AI {
 
 
 	private void terminate() {
-		say(getIStopSentence());
+		say(getIStopMyselfSentence());
 		if (kb != null) {
 			kb.close();
 		}
@@ -521,7 +547,7 @@ public class AI {
 		}
 		return res;
 	}
-	
+
 	public static Designation getFirstDesignationFrom(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
 		Designation res;
 		List<Designation> allConcepts = getAllDesignationFrom(vocabulary, designation, classLookedFor);

@@ -11,9 +11,7 @@ import grammar.Knowing;
 import grammar.Not;
 import grammar.StartSoftware;
 import grammar.Stop;
-import grammar.Verb;
-import grammar.VerbInterrogative;
-import simplenlg.features.Tense;
+import simplenlg.features.Person;
 import simplenlg.lexicon.XMLLexicon;
 
 public class FrenchTranslator extends Translator {
@@ -26,17 +24,15 @@ public class FrenchTranslator extends Translator {
 	public void addBasicVocabulary() {
 		this.vocabulary.add(new Designation("quoi", EntityInterrogative.getInstance()));
 		this.vocabulary.add(new Designation("qui", EntityInterrogative.getInstance()));
-		this.vocabulary.add(new Designation("quoi", VerbInterrogative.getInstance()));
 		
-		this.vocabulary.add(new Designation("signifier", new Verb(Tense.PRESENT, HasSameMeaningAs.getInstance())));
-		this.vocabulary.add(new Designation("démarrer", new Verb(Tense.PRESENT, StartSoftware.getInstance())));
+		this.vocabulary.add(new Designation("signifier", HasSameMeaningAs.getInstance()));
+		this.vocabulary.add(new Designation("démarrer", StartSoftware.getInstance()));
 
-		this.vocabulary.add(new Designation("éteindre", new Verb(Tense.PRESENT, Stop.getInstance())));
-		this.vocabulary.add(new Designation("arrêter",  new Verb(Tense.PRESENT, Stop.getInstance())));
+		this.vocabulary.add(new Designation("éteindre", Stop.getInstance()));
+		this.vocabulary.add(new Designation("arrêter",  Stop.getInstance()));
 		
-		this.vocabulary.add(new Designation("savoir",  new Verb(Tense.PRESENT, Knowing.getInstance())));
-		this.vocabulary.add(new Designation("définir", new Verb(Tense.PRESENT, Explain.getInstance())));
-		
+		this.vocabulary.add(new Designation("savoir",  Knowing.getInstance()));
+		this.vocabulary.add(new Designation("définir", Explain.getInstance()));
 
 		this.vocabulary.add(new Designation("pas", Not.getInstance()));
 
@@ -57,9 +53,19 @@ public class FrenchTranslator extends Translator {
 	public XMLLexicon getXMLLexicon() {
 		return new simplenlg.lexicon.french.XMLLexicon("res/default-french-lexicon.xml");
 	}
+	
+	@Override
+	public String getDefaultUserApostrophe() {
+		return "monsieur";
+	}
 
 	@Override
 	public String getStanfordParserModelFilename() {
 		return "edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz";
+	}
+	
+	@Override
+	protected String getPolitenessPersonalPronoun() {
+		return getBasePluralPersonalPronoun(getXMLLexicon(), Person.SECOND);
 	}
 }

@@ -5,7 +5,7 @@ package grammar;
  * @author charles
  *
  */
-public class Stop extends VerbMeaning {
+public class Stop extends Verb {
 	private Stop() {
 	}
 	

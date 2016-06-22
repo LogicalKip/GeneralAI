@@ -30,8 +30,6 @@ import grammar.Order;
 import grammar.Sentence;
 import grammar.User;
 import grammar.Verb;
-import grammar.VerbMeaning;
-import simplenlg.features.Tense;
 import simplenlg.framework.LexicalCategory;
 import simplenlg.lexicon.XMLLexicon;
 
@@ -515,7 +513,7 @@ public class StanfordParser {
 		Designation d = AI.getFirstDesignationFrom(getUpdatedVocabulary(), designation, AbstractVerb.class);
 		
 		if (d == null) { // Unknown word
-			AbstractVerb newConcept = new Verb(Tense.PRESENT, new VerbMeaning());
+			AbstractVerb newConcept = new Verb();
 			res = newConcept;
 			newVocabulary.add(new Designation(designation, newConcept));
 		} else {
