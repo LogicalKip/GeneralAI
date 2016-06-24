@@ -40,7 +40,12 @@ que mange le chat ?
       (NP (DET le) (NC chat)))
     (PUNC ?)))
 
-
+qui est petit ?
+(SENT
+  (NP (PROREL qui))
+  (VN (V est))
+  (NP (ADJ petit))
+  (PUNC ?))
 qui mange le chat ?
 (ROOT
   (SENT
@@ -343,6 +348,47 @@ il est intéressant
     (VN (V est))
     (AP (ADJ intéressant))))
 
+il est gentil
+(SENT
+  (COORD
+    (VN (CLS il) (V est))
+    (NP (NC gentil))))
+
+un chat est gentil
+(SENT
+  (NP (DET un) (NC chat))
+  (VN (V est) (VPP gentil)))
+
+il est minuscule
+(SENT
+  (COORD
+    (VN (CLS il) (V est))
+    (NP (ADJ minuscule))))
+le chat est petit
+(SENT
+  (NP (DET le) (NC chat))
+  (VN (V est))
+  (NP (ADJ petit)))
+le chat mange la souris.
+(ROOT
+  (SENT
+    (NP (DET le) (NC chat))
+    (VN (V mange))
+    (NP (DET la) (NC souris))
+    (PUNC .)))
+je mange une souris
+(ROOT
+  (SENT
+    (COORD
+      (VN (CLS je) (V mange))
+      (NP (DET une) (NC souris)))))
+qui est petit ?
+(SENT
+  (NP (PROREL qui))
+  (VN (V est))
+  (NP (ADJ petit))
+  (PUNC ?))
+
 
 Start -> DeclarativeSentence | Order
 DeclarativeSentence -> (VG|VGPronoun) interrogationMark? 
@@ -425,6 +471,12 @@ FactoredParser: no consistent parse [hit A*-blocked edges, aborting].
 (SENT
   (NP (NPP manger))
   (VN (V signifie) (VPP dévorer)))	
+
+petit signifie grand
+(SENT
+  (NP (ADJ petit))
+  (VN (V signifie))
+  (AP (ADJ grand)))
 
 je te vois
 FactoredParser: no consistent parse [hit A*-blocked edges, aborting].

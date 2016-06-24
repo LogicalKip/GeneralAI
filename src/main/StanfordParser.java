@@ -28,6 +28,9 @@ import grammar.Not;
 import grammar.NounDesignation;
 import grammar.Order;
 import grammar.Sentence;
+import grammar.SimpleSentence;
+import grammar.StativeSentence;
+import grammar.StativeVerb;
 import grammar.User;
 import grammar.Verb;
 import simplenlg.framework.LexicalCategory;
@@ -81,7 +84,7 @@ public class StanfordParser {
 			try {
 				return relativeClauseSentence(t);
 			} catch (WrongGrammarRuleException e2) {
-				return declarativeSentence(t);
+				return simpleSentence(t);
 			}
 		}
 	}
@@ -95,11 +98,11 @@ public class StanfordParser {
 		if (t.value().equals("SENT")) {
 			Tree[] children = t.children();
 			int i = 0;
-			
+
 			@SuppressWarnings("unused") // May want to test if the pronoun is "who", "where", etc to give an adequate answer later. 
 			String relativePronoun = getLeaf(children[i], "PROREL"); // If there isn't any pronoun, an exception is thrown
 			i++;
-			
+
 			AbstractVerb verb = processCorrespondingVerb(getVerb(children[i]));
 			i++;
 
@@ -112,17 +115,32 @@ public class StanfordParser {
 				negative = false;
 			}
 
-			IEntity object = NP(children[i]);
-			i++;
+			SimpleSentence res;
 
-			DeclarativeSentence res = new DeclarativeSentence(EntityInterrogative.getInstance(), verb, object);
+
+			try {
+				if (!(verb instanceof StativeVerb)) {
+					throw new WrongGrammarRuleException();
+				}
+				Adjective adjective = processCorrespondingAdjective(singleAdjective(children[i]));
+				i++;
+
+
+				res = new StativeSentence(EntityInterrogative.getInstance(), (StativeVerb) verb, (Adjective) adjective);
+			} catch (WrongGrammarRuleException e) {
+				IEntity object = NP(children[i]);
+				i++;
+
+				res = new DeclarativeSentence(EntityInterrogative.getInstance(), verb, object);
+			}
+
 			res.setNegative(negative);
-			
+
 			if (! isInterrogationMark(children[i])) {
 				throw new WrongGrammarRuleException();
 			}
 			res.setInterrogative(true);
-			
+
 			return res;
 		}
 		throw new WrongGrammarRuleException();
@@ -145,38 +163,85 @@ public class StanfordParser {
 		throw new WrongGrammarRuleException();
 	}
 
+	private String singleAdjective(Tree t) throws WrongGrammarRuleException {
+		if ((t.value().equals("AP") || t.value().equals("NP")) && 
+				t.children().length == 1 && 
+				t.children()[0].value().equals("ADJ")) {
+			return t.children()[0].children()[0].value();
+		} 
+
+		throw new WrongGrammarRuleException();
+	}
+
+	private SimpleSentence simpleSentence(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
+		try {
+			return pronounSubjectSentence(t);
+		} catch (WrongGrammarRuleException e) {
+			return nominalGroupSubjectSentence(t);
+		}
+	}
+
 	/**
-	 * Typical sentence : subject verb object
+	 * A sentence that starts with a pronoun, such as "I want a cat" or "you are a cat". May not include cats
 	 */
-	private DeclarativeSentence declarativeSentence(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
+	private SimpleSentence pronounSubjectSentence(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
 		if (t.value().equals("SENT")) {
-			DeclarativeSentence res;
+			SimpleSentence res;
 			Tree[] children = t.children();
 
+			if (children.length == 1 && children[0].value().equals("COORD")) {
+				children = children[0].children();
+			}
+
+			if (children.length < 2 || ! children[0].value().equals("VN")) {
+				throw new WrongGrammarRuleException();
+			}
+
+			int i = 0;
+
+			Entity subject = getEntityFromPronoun(getLeaf(children[i], "CLS"));
+			AbstractVerb verb = processCorrespondingVerb(getVerb(children[i]));
+			i++;
+
+			boolean negative; 
 			try {
-				res = pronounVerbalGroup(t);
+				negation(children[i]);
+				negative = true;
+				i++;
 			} catch (WrongGrammarRuleException e) {
-				res = verbalGroup(t);
+				negative = false;
+			}
+
+			if (verb instanceof StativeVerb) {
+				try {
+					String adjective = singleAdjective(children[i]);
+					res = new StativeSentence(subject, (StativeVerb) verb, processCorrespondingAdjective(adjective));
+				} catch (WrongGrammarRuleException e) {
+					IEntity object = NP(children[i]);
+					res = new DeclarativeSentence(subject, verb, object);
+				}
+			} else {
+				IEntity object = NP(children[i]);
+				res = new DeclarativeSentence(subject, verb, object);
 			}
 
 			res.setInterrogative(isInterrogationMark(children[children.length-1]));
 
+			res.setNegative(negative);
 			return res;
 		}
 		throw new WrongGrammarRuleException();
 	}
 
+
 	/**
-	 * This verbal group is the typical declarative sentence, with a nominal group ("the cat"), a verb ("eats") and an object ("the mouse")
+	 * A sentence that starts with a nominal group, such as "the cat eats the mouse" or "the cat is nice"
 	 */
-	private DeclarativeSentence verbalGroup(Tree t) throws CantFindSuchAnEntityException, WrongGrammarRuleException {
+	private SimpleSentence nominalGroupSubjectSentence(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
 		if (t.value().equals("SENT")) {
+			SimpleSentence res;
 			Tree[] children = t.children();
 			int i = 0;
-
-			if (children.length < 3) {
-				throw new WrongGrammarRuleException();
-			}
 
 			IEntity subject = NP(children[i]);
 			i++;
@@ -184,24 +249,34 @@ public class StanfordParser {
 			AbstractVerb verb = processCorrespondingVerb(getVerb(children[i]));
 			i++;
 
-			boolean negative;
+			boolean negative; 
 			try {
 				negation(children[i]);
-				i++;
 				negative = true;
+				i++;
 			} catch (WrongGrammarRuleException e) {
 				negative = false;
 			}
 
-			IEntity object = NP(children[i]);
-			i++;
+			if (verb instanceof StativeVerb) {
+				try {
+					String adjective = singleAdjective(children[i]);
+					res = new StativeSentence(subject, (StativeVerb) verb, processCorrespondingAdjective(adjective));
+				} catch (WrongGrammarRuleException e) {
+					IEntity object = NP(children[i]);
+					res = new DeclarativeSentence(subject, verb, object);
+				}
+			} else {
+				IEntity object = NP(children[i]);
+				res = new DeclarativeSentence(subject, verb, object);
+			}
 
-			DeclarativeSentence res = new DeclarativeSentence(subject, verb, object);
+			res.setInterrogative(isInterrogationMark(children[children.length-1]));
+
 			res.setNegative(negative);
 			return res;
 		}
 		throw new WrongGrammarRuleException();
-
 	}
 
 	private void negation(Tree t) throws WrongGrammarRuleException {
@@ -215,46 +290,6 @@ public class StanfordParser {
 		throw new WrongGrammarRuleException();
 	}
 
-	/**
-	 * This verbal group is a declarative sentence, whose subject is a pronoun (I, you) ("I want a cat")
-	 * The subject being a pronoun changes considerably the tree structure and thus requires a separate method to {@link StanfordParser#verbalGroup(Tree)}
-	 */
-	private DeclarativeSentence pronounVerbalGroup(Tree t) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
-		if (t.value().equals("SENT")) {
-			Tree[] children = t.children();
-
-			if (children.length != 1 || ! children[0].value().equals("COORD")) {
-				throw new WrongGrammarRuleException();
-			}
-			children = children[0].children();
-
-			if (children.length != 2 || ! children[0].value().equals("VN")) {
-				throw new WrongGrammarRuleException();
-			}
-
-			int i = 0;
-
-			Entity subject = getEntityFromPronoun(getLeaf(children[i], "CLS"));
-			AbstractVerb verb = processCorrespondingVerb(getVerb(children[i]));
-			boolean negative; 
-
-			try {
-				negation(children[i]);
-				negative = true;
-			} catch (WrongGrammarRuleException e) {
-				negative = false;
-			}
-			i++;
-
-			IEntity object = NP(children[i]);
-
-			DeclarativeSentence res = new DeclarativeSentence(subject, verb, object);
-			res.setNegative(negative);
-			return res;
-		}
-		throw new WrongGrammarRuleException();
-	}
-
 	private Verb infinitiveVerbalPhrase(Tree t) throws WrongGrammarRuleException {
 		if (t.value().equals("VPinf")) {
 			String verb = getLeaf(t, "VINF");
@@ -263,7 +298,7 @@ public class StanfordParser {
 			if (res == null) {
 				throw new WrongGrammarRuleException();
 			}
-			
+
 			res.incrementTimesUserUsedIt();
 			return ((Verb)res.getDesignatedConcept());
 		}
@@ -320,11 +355,6 @@ public class StanfordParser {
 		}
 
 		return res;
-	}
-
-	private List<String> getLeaves(Tree tree, String value) {
-		String[] tab = {value};
-		return getLeaves(tree, tab);
 	}
 
 
@@ -430,7 +460,7 @@ public class StanfordParser {
 		}
 
 		Designation designation = AI.getFirstDesignationFrom(getUpdatedVocabulary(), nounDesignation, AbstractEntityConcept.class);
-		
+
 		if (designation == null) { // Unknown word
 			EntityConcept newConcept = new EntityConcept();
 
@@ -446,7 +476,7 @@ public class StanfordParser {
 		} else {
 			AbstractEntityConcept designatedConcept = (AbstractEntityConcept) designation.getDesignatedConcept();
 			designation.incrementTimesUserUsedIt();
-			
+
 			if (designatedConcept instanceof EntityInterrogative) {
 				res = (EntityInterrogative) designatedConcept;
 			} else if (designatedConcept instanceof EntityConcept) {
@@ -470,10 +500,10 @@ public class StanfordParser {
 
 		return res;
 	}
-	
+
 	private static List<String> getDesignationsOf(List<Adjective> adjectives, List<Designation> vocab) {
 		List<String> res = new LinkedList<String>();
-		
+
 		for (Designation d : vocab) {
 			if (adjectives.contains(d.getDesignatedConcept())) {
 				res.add(d.getValue());
@@ -511,13 +541,34 @@ public class StanfordParser {
 
 		AbstractVerb res;
 		Designation d = AI.getFirstDesignationFrom(getUpdatedVocabulary(), designation, AbstractVerb.class);
-		
+
 		if (d == null) { // Unknown word
 			AbstractVerb newConcept = new Verb();
 			res = newConcept;
 			newVocabulary.add(new Designation(designation, newConcept));
 		} else {
 			res = (AbstractVerb) d.getDesignatedConcept();
+		}
+
+		return res;
+	}
+
+
+	/**
+	 * Returns the concept corresponding to the parameter (it is implied that it represents an adjective) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
+	 */
+	private Adjective processCorrespondingAdjective(String adjective) {
+		String designation = isKnownAdjective(adjective) ? getBase(adjective, LexicalCategory.ADJECTIVE) : adjective;
+
+		Adjective res;
+		Designation d = AI.getFirstDesignationFrom(getUpdatedVocabulary(), designation, Adjective.class);
+
+		if (d == null) { // Unknown word
+			Adjective newConcept = new Adjective();
+			res = newConcept;
+			newVocabulary.add(new Designation(designation, newConcept));
+		} else {
+			res = (Adjective) d.getDesignatedConcept();
 		}
 
 		return res;

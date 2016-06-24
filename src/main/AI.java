@@ -14,6 +14,7 @@ import exceptions.ParserException;
 import exceptions.WrongGrammarRuleException;
 import grammar.AbstractConcept;
 import grammar.DeclarativeSentence;
+import grammar.SimpleSentence;
 import grammar.Designation;
 import grammar.Entity;
 import grammar.EntityConcept;
@@ -26,6 +27,7 @@ import grammar.Myself;
 import grammar.Order;
 import grammar.Sentence;
 import grammar.StartSoftware;
+import grammar.StativeSentence;
 import grammar.Stop;
 import grammar.Understand;
 import grammar.Verb;
@@ -35,9 +37,19 @@ import simplenlg.framework.NLGElement;
 /*
  * TODO list :
  * 
+ * rajouter les nouveaux verbes d'état dynamiques comme pour ceux d'action
+ * 
+ * phrases d'état : pas besoin que la phrase avec "être" soit dans les faits. "le chat est quoi/petit ?" il faut aussi regarder dans les entités connues et leurs adjectifs quand c'est le verbe être
+ * 
+ * "je suis un homme" -> getBase() donne suivre ou être ?
+ * 
  * mergeEntities : adjectifs à fusionner
  * 
+ * tu/le chat est quoi ? -> quelle_entité et quel_adjectif
+ * 
  * pronom personnel 3ème personne
+ * 
+ * Grammar : factorisation possible ?
  * 
  * dire monsieur aléatoirement au lieu de tout le temps
  * 
@@ -73,7 +85,7 @@ import simplenlg.framework.NLGElement;
  * 
  * wiki github pour expliquer les différents cas d'utilisation, limitations selon les OS, installation, indiquer qu'il faut Tree.pennPrint() pour afficher l'arbre
  * 
- * source d'erreur possible (plus tard) dans la grammaire : ça commence par marcher, on crée une entité ou du vocabulaire (dans la liste "newXXX"), puis la suite ne colle pas, donc on revient en arrière, on essaie avec une autre règle, elle marche, on recrée l'entite/vocab, elle marche jusqu'au bout et tout finit bien, mais on a deux fois l'entité/vocab dans la liste (voire deux légèrement différentes, dont une fausse). Faut-il réinitialiser les listes à chaque WrongGrammarRuleException (par exemple, en le forçant, en devant passer les listes au constructeur, qui les vide) ?
+ * source d'erreur possible dans la grammaire : ça commence par marcher, on crée une entité ou du vocabulaire (dans la liste "newXXX"), puis la suite ne colle pas, donc on revient en arrière, on essaie avec une autre règle, elle marche, on recrée l'entite/vocab, elle marche jusqu'au bout et tout finit bien, mais on a deux fois l'entité/vocab dans la liste (voire deux légèrement différentes, dont une fausse). Faut-il réinitialiser les listes à chaque WrongGrammarRuleException (par exemple, en le forçant, en devant passer les listes au constructeur, qui les vide) ? Il faut rollback completement, aller dans une mauvais règle ne devrait avoir aucune influence. être ~LL(1) règle ça, mais la grammaire ne le restera pas forcément éternellement
  * 
  * signifie pourrait avoir plusieurs sens :
  * ce chat est le même animal que cet autre chat
@@ -107,8 +119,6 @@ import simplenlg.framework.NLGElement;
  * Deux désignations d'un genre différent peuvent (probablement) désigner le même concept. C'est le mot/désignation qui a un genre au final, pas le concept lui-même
  * 
  * A debugger :
-je mange la souris ?
-[AI] Je ne comprends pas, monsieur.
  * 
 [AI] Initializing...
 [AI] Ready.
@@ -119,7 +129,7 @@ qui mange quoi ?
  car le mot n'est pas dans le lexique. Même en demandant un "la", ça met un "le" par défaut car le genre n'est pas connu dans le lexique je suppose
  *
  quoi signifie quoi ?
- [AI] Signifierait le chat/minet.
+ [AI] PROBLEM signifierait le chat, monsieur.
  *
  qui regarde pas quoi ?
 (SENT
@@ -148,10 +158,10 @@ qui est pas quoi ?
     (AP (ADJ blanc))))
 [AI] I don't understand that.
  *
- le chat mange pas quoi ?
-[AI] 
- *
  le chat mange le chien
+ (SENT
+  (NP (DET le) (NC chat)
+    (MWN (N mange) (DET le) (N chien))))
 [AI] I don't understand that.
  */
 
@@ -159,7 +169,7 @@ public class AI {
 	/**
 	 * A list of facts learned from the outside
 	 */
-	private List<DeclarativeSentence> knowledge;
+	private List<SimpleSentence> knowledge;
 	/**
 	 * The instances of entity we know about. Ex : that cat, that other cat over there, the user.
 	 * The ones that have been mentioned last must go at the end of the list so that it can be guessed which one the user will be talking about.
@@ -174,7 +184,7 @@ public class AI {
 		this.translator = new FrenchTranslator(this);
 		say("Initializing...");
 
-		this.knowledge = new LinkedList<DeclarativeSentence>();
+		this.knowledge = new LinkedList<SimpleSentence>();
 		this.addBasicKnowledge();
 		this.stopPrgm = false;
 		this.entitiesKnown = new LinkedList<Entity>();
@@ -194,10 +204,10 @@ public class AI {
 				if (parsedInput instanceof Order) {
 					obeyOrder((Order) parsedInput);
 				}
-				else if (parsedInput instanceof DeclarativeSentence) {
+				else if (parsedInput instanceof SimpleSentence) {
 					this.translator.getVocabulary().addAll(parser.getNewVocabulary());
 
-					processDeclarativeSentenceFromUser((DeclarativeSentence) parsedInput, parser.getNewEntities());
+					processSimpleSentenceFromUser((SimpleSentence) parsedInput, parser.getNewEntities());
 				}
 			} catch (ParserException | NotEnoughKnowledgeException e) {
 				say(e.getMessage());
@@ -222,11 +232,11 @@ public class AI {
 
 		List<Designation> designations = translator.getDesignations(exception.getConcept());
 		String designation = designations.isEmpty() ? 
-				"that thing" :
-					"a \"" + designations.get(0).getValue() + "\"";
+				"of those things" :
+					designations.get(0).getValue();
 
 		if (similarEntities.isEmpty()) {
-			res += "In fact, I don't even know what is " + designation;
+			res += "In fact, I don't even know any " + designation;
 		} else {
 			res += "I only know of :";
 			for (Entity e : similarEntities) {
@@ -316,31 +326,41 @@ public class AI {
 		return output.toString();
 	}
 
-	private void processDeclarativeSentenceFromUser(DeclarativeSentence declarativeSentence, List<Entity> newEntities) {
-		if (declarativeSentence.isInterrogative()) {
-			answer(declarativeSentence);
-		} else if (this.knowledge.contains(declarativeSentence)) {
+	private void processSimpleSentenceFromUser(SimpleSentence simpleSentence, List<Entity> newEntities) {
+		if (simpleSentence.isInterrogative()) {
+			answer(simpleSentence);
+		} else if (this.knowledge.contains(simpleSentence)) {
 			say(getIKnowSentence());
 		} else {
-			this.knowledge.add(declarativeSentence);
-			Verb meaning = (Verb) declarativeSentence.getVerb();
+			this.knowledge.add(simpleSentence);
+			Verb meaning = (Verb) simpleSentence.getVerb();
 
-			if (meaning instanceof HasSameMeaningAs) {
-				if (declarativeSentence.getSubject() instanceof Entity &&
-						declarativeSentence.getObject() instanceof Entity) {
-					mergeEntityConcepts(
-							((Entity)declarativeSentence.getSubject()).getConcept(), 
-							((Entity)declarativeSentence.getObject()).getConcept());
-				}
-			} else {
+			if (simpleSentence instanceof StativeSentence) {
+				StativeSentence stativeSentence = (StativeSentence) simpleSentence;
+				((Entity) stativeSentence.getSubject()).addCharacteristic(stativeSentence.getAdjective());
+				
 				this.entitiesKnown.addAll(newEntities);
+			} else {
+				if (meaning instanceof HasSameMeaningAs) {
+					DeclarativeSentence decl = (DeclarativeSentence) simpleSentence;
+					if (decl.getSubject() instanceof Entity &&
+							decl.getObject() instanceof Entity) {
+						mergeEntityConcepts(
+								((Entity)decl.getSubject()).getConcept(), 
+								((Entity)decl.getObject()).getConcept());
+					}
+				} else {
+					this.entitiesKnown.addAll(newEntities);
+				}
 			}
+			
+			
 			removeDuplicatesFromKnowledge();
 			say(translator.getUnderstoodSentence());
 		}
 
 		// Move mentioned entities at the end so that, in the future, given an incomplete description of an entity, we may pick those at the end because they are the most likely to be referred to (they were the last mentioned)
-		for (Entity e : declarativeSentence.getMentionedEntities()) {
+		for (Entity e : simpleSentence.getMentionedEntities()) {
 			if (entitiesKnown.contains(e)) {
 				this.entitiesKnown.remove(e);
 				this.entitiesKnown.add(e);
@@ -349,9 +369,9 @@ public class AI {
 	}
 
 	private void removeDuplicatesFromKnowledge() {
-		List<DeclarativeSentence> updatedKnowledge = new LinkedList<DeclarativeSentence>();
+		List<SimpleSentence> updatedKnowledge = new LinkedList<SimpleSentence>();
 
-		for (DeclarativeSentence sentence : this.knowledge) {
+		for (SimpleSentence sentence : this.knowledge) {
 			if (! updatedKnowledge.contains(sentence)) {
 				updatedKnowledge.add(sentence);
 			}
@@ -385,7 +405,7 @@ public class AI {
 	 * It is supposed that the vocabulary has designations referring to both parameters 
 	 */
 	private void mergeEntities(Entity a, Entity b) {
-		for (DeclarativeSentence currSentence : this.knowledge) {
+		for (SimpleSentence currSentence : this.knowledge) {
 			currSentence.replace(a, b);
 		}
 		this.entitiesKnown.remove(a);
@@ -393,9 +413,9 @@ public class AI {
 	}
 
 
-	private void answer(DeclarativeSentence question) {
+	private void answer(SimpleSentence question) {
 		if (question.isInterrogative()) {
-			List<DeclarativeSentence> answers = new LinkedList<DeclarativeSentence>();
+			List<SimpleSentence> answers = new LinkedList<SimpleSentence>();
 
 			Object questionConcepts[] = question.split();
 			boolean yesNoQuestion = true;
@@ -406,7 +426,7 @@ public class AI {
 				}
 			}
 
-			for (DeclarativeSentence currFact : this.knowledge) {
+			for (SimpleSentence currFact : this.knowledge) {
 				boolean answersTheQuestion = true;
 				Object currFactConcepts[] = currFact.split();
 				for (int i = 0 ; i < questionConcepts.length ; i++) { // Looking at the question and potential answer in parallel
@@ -434,12 +454,12 @@ public class AI {
 						say("No");
 					}
 				} else {
-					List<DeclarativeSentence> actualAnswers = new LinkedList<DeclarativeSentence>();
-					for (DeclarativeSentence a : answers) {
+					List<SimpleSentence> actualAnswers = new LinkedList<SimpleSentence>();
+					for (SimpleSentence a : answers) {
 						if (a.isNegative() == question.isNegative()) {
-							DeclarativeSentence actualAnswer = null;
+							SimpleSentence actualAnswer = null;
 							try {
-								actualAnswer = (DeclarativeSentence) a.clone();
+								actualAnswer = (SimpleSentence) a.clone();
 							} catch (CloneNotSupportedException e) {
 								e.printStackTrace();
 							}
@@ -458,8 +478,8 @@ public class AI {
 	/**
 	 * Returns a sentence that means "I don't know", without specifying what
 	 */
-	private DeclarativeSentence getIDontKnowSentence() {
-		DeclarativeSentence res = getIKnowSentence();
+	private SimpleSentence getIDontKnowSentence() {
+		SimpleSentence res = getIKnowSentence();
 		res.setNegative();
 		return res;
 	}
@@ -467,34 +487,34 @@ public class AI {
 	/**
 	 * Returns a sentence that means "I know", without specifying what
 	 */
-	private DeclarativeSentence getIKnowSentence() {
+	private SimpleSentence getIKnowSentence() {
 		return new DeclarativeSentence(Myself.getInstance(), Knowing.getInstance(), null);
 	}
 
 	/**
 	 * "What do I [verb] ?"
 	 */
-	private DeclarativeSentence getVerbWhatSentence(Verb verb) {
-		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), verb, EntityInterrogative.getInstance());
+	private SimpleSentence getVerbWhatSentence(Verb verb) {
+		SimpleSentence res = new DeclarativeSentence(Myself.getInstance(), verb, EntityInterrogative.getInstance());
 		res.setInterrogative(true);
 		return res;
 	}
 
-	private DeclarativeSentence getStartWhatSentence() {
+	private SimpleSentence getStartWhatSentence() {
 		return getVerbWhatSentence(StartSoftware.getInstance());
 	}
 
-	private DeclarativeSentence getExplainWhatSentence() {
+	private SimpleSentence getExplainWhatSentence() {
 		return getVerbWhatSentence(Explain.getInstance());
 	}
 
-	private DeclarativeSentence getIStopMyselfSentence() {
-		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), Stop.getInstance(), Myself.getInstance());
+	private SimpleSentence getIStopMyselfSentence() {
+		SimpleSentence res = new DeclarativeSentence(Myself.getInstance(), Stop.getInstance(), Myself.getInstance());
 		return res;
 	}
 
-	private DeclarativeSentence getIDontUnderstandSentence() {
-		DeclarativeSentence res = new DeclarativeSentence(Myself.getInstance(), Understand.getInstance(), null);
+	private SimpleSentence getIDontUnderstandSentence() {
+		SimpleSentence res = new DeclarativeSentence(Myself.getInstance(), Understand.getInstance(), null);
 		res.setNegative();
 		return res;
 	}
@@ -507,11 +527,11 @@ public class AI {
 		this.translator.say(s);
 	}
 
-	private void say(List<DeclarativeSentence> s) {
+	private void say(List<SimpleSentence> s) {
 		this.translator.say(s);
 	}
 
-	private void say(DeclarativeSentence s) {
+	private void say(SimpleSentence s) {
 		this.translator.say(s);
 	}
 

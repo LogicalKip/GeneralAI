@@ -10,6 +10,7 @@ import grammar.AbstractConcept;
 import grammar.AbstractEntityConcept;
 import grammar.Adjective;
 import grammar.DeclarativeSentence;
+import grammar.SimpleSentence;
 import grammar.DefiniteDeterminer;
 import grammar.Designation;
 import grammar.Determiner;
@@ -22,6 +23,7 @@ import grammar.IndefiniteDeterminer;
 import grammar.Myself;
 import grammar.NounDesignation;
 import grammar.StartSoftware;
+import grammar.StativeSentence;
 import grammar.Stop;
 import grammar.Understand;
 import grammar.User;
@@ -105,7 +107,7 @@ public abstract class Translator {
 	/**
 	 * Display an abstract sentence in a way the user can understand, thanks to the language provided by the subclass
 	 */
-	public void say(DeclarativeSentence sentence) {
+	public void say(SimpleSentence sentence) {
 		say(realiser.realiseSentence(parseSentence(sentence, true)));
 	}
 	
@@ -113,9 +115,9 @@ public abstract class Translator {
 		say(realiser.realiseSentence(sentence));
 	}
 
-	public void say(List<DeclarativeSentence> sentences) {
+	public void say(List<SimpleSentence> sentences) {
 		CoordinatedPhraseElement coordination = nlgFactory.createCoordinatedPhrase();
-		for (DeclarativeSentence s : sentences) {
+		for (SimpleSentence s : sentences) {
 			coordination.addCoordinate(parseSentence(s, false));
 		}
 		say(realiser.realiseSentence(addApostrophe(coordination)));
@@ -135,25 +137,34 @@ public abstract class Translator {
 	public abstract String getStanfordParserModelFilename();
 
 	/**
-	 * From a {@link DeclarativeSentence}, makes an object that can be computed by the simpleNLG library, and possibly adds some features to improve the result
+	 * From a {@link SimpleSentence}, makes an object that can be computed by the simpleNLG library, and possibly adds some features to improve the result
 	 */
-	private NLGElement parseSentence(DeclarativeSentence sentence, boolean addApostrophe) {
-		IEntity s = sentence.getSubject();
-		IEntity o = sentence.getObject();
-
+	private NLGElement parseSentence(SimpleSentence sentence, boolean addApostrophe) {
+		IEntity subject = sentence.getSubject();
+		
+		String objectString;
+		IEntity object = null;
+		
+		if (sentence instanceof DeclarativeSentence) {
+			object = ((DeclarativeSentence) sentence).getObject();
+			objectString = computeEntityString(object);
+		} else {
+			objectString = getBestDesignation(((StativeSentence) sentence).getAdjective());
+		}
+		
 		NLGElement p = nlgFactory.createClause(
-				computeEntityString(s),
+				computeEntityString(subject),
 				getBestDesignation(sentence.getVerb()), 
-				computeEntityString(o));
+				objectString);
 		
 		p.setFeature(Feature.NEGATED, sentence.isNegative());
 		p.setFeature(Feature.TENSE, sentence.getTense());
 		
 		if (sentence.isInterrogative()) {
-			if (sentence.getSubject().equals(EntityInterrogative.getInstance())) {
+			if (subject.equals(EntityInterrogative.getInstance())) {
 				p.setFeature(Feature.INTERROGATIVE_TYPE, InterrogativeType.WHO_SUBJECT);
 			}
-			if (sentence.getObject().equals(EntityInterrogative.getInstance())) {
+			if (object != null && object.equals(EntityInterrogative.getInstance())) {
 				p.setFeature(Feature.INTERROGATIVE_TYPE, InterrogativeType.WHAT_OBJECT);// Or InterrogativeType.WHO_OBJECT
 			}
 		} else if (addApostrophe) {		

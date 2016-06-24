@@ -1,54 +1,19 @@
 package grammar;
 
-import java.util.LinkedList;
 import java.util.List;
 
-import simplenlg.features.Tense;
-
-public class DeclarativeSentence extends Sentence implements Cloneable {
-	private Tense tense;
-
-	private boolean isNegative;
-
-	private IEntity subject;
-
+public class DeclarativeSentence extends SimpleSentence {
 	private AbstractVerb verb;
 
 	private IEntity object;
 
-	private boolean interrogative;
-
 	public DeclarativeSentence(IEntity subject, AbstractVerb verb, IEntity object) {
-		this.subject = subject;
-		this.verb = verb;
+		super(subject);
 		this.object = object;
-		this.interrogative = false;
-		this.isNegative = false;
-		this.tense = Tense.PRESENT;
-	}
-	
-	public Object[] split() {
-		Object res[] =  {this.getSubject(), this.getVerb(), this.getObject()};
-		return res;
+		this.verb = verb;
 	}
 
 	@Override
-	public String toString() {
-		return "Sentence : " + subject + "+" + verb + "+" + object + " " + (isInterrogative() ? "?" : "!");
-	}
-
-	public boolean isInterrogative() {
-		return interrogative;
-	}
-
-	public void setInterrogative(boolean interrogative) {
-		this.interrogative = interrogative;
-	}
-
-	public IEntity getSubject() {
-		return subject;
-	}
-
 	public AbstractVerb getVerb() {
 		return verb;
 	}
@@ -57,60 +22,37 @@ public class DeclarativeSentence extends Sentence implements Cloneable {
 		return object;
 	}
 
+	@Override
 	public void replace(Entity from, Entity to) {
-		this.subject = this.subject.equals(from) ? to : this.subject;
+		super.replace(from, to);
 		this.object = this.object.equals(from) ? to : this.object;
 	}
+
 
 	@Override
 	public boolean equals(Object otherObject) {
 		if (otherObject instanceof DeclarativeSentence) {
 			DeclarativeSentence s = (DeclarativeSentence) otherObject;
-			return this.subject.equals(s.getSubject()) && 
-					this.verb.equals(s.getVerb()) &&
+			return 
+					this.getSubject().equals(s.getSubject()) && 
+					this.getVerb().equals(s.getVerb()) && 
 					this.object.equals(s.getObject());
 		}
 		return super.equals(otherObject);
 	}
-	
-	public List<Entity> getMentionedEntities() {
-		List<Entity> res = new LinkedList<Entity>();
 
-		addInIfEntity(res, this.subject);
+	@Override
+	public List<Entity> getMentionedEntities() {
+		List<Entity> res = super.getMentionedEntities();
+
 		addInIfEntity(res, this.object);
-		
+
 		return res;
 	}
-	
-	private void addInIfEntity(List<Entity> list, IEntity object) {
-		if (object instanceof Entity) {
-			list.add((Entity)object);
-		}
-	}
-	
-	public boolean isNegative() {
-		return isNegative;
-	}
 
-	public void setNegative(boolean isNegative) {
-		this.isNegative = isNegative;
-	}
-	
-	public void setNegative() {
-		this.isNegative = true;
-	}
-
-	public Tense getTense() {
-		return tense;
-	}
-
-	public void setTense(Tense tense) {
-		this.tense = tense;
-	}
-	
 	@Override
-	public Object clone() throws CloneNotSupportedException {
-		return super.clone();
+	public Object[] split() {
+		Object res[] =  {this.getSubject(), this.getVerb(), this.getObject()};
+		return res;
 	}
-
 }

@@ -1,5 +1,6 @@
 package main;
 
+import grammar.Be;
 import grammar.DefiniteDeterminer;
 import grammar.Designation;
 import grammar.EntityInterrogative;
@@ -31,7 +32,8 @@ public class FrenchTranslator extends Translator {
 
 		this.vocabulary.add(new Designation("éteindre", Stop.getInstance()));
 		this.vocabulary.add(new Designation("arrêter",  Stop.getInstance()));
-		
+
+		this.vocabulary.add(new Designation("être", Be.getInstance()));
 		this.vocabulary.add(new Designation("savoir",  Knowing.getInstance()));
 		this.vocabulary.add(new Designation("définir", Explain.getInstance()));
 		this.vocabulary.add(new Designation("comprendre", Understand.getInstance()));
