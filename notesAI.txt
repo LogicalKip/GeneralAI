@@ -510,6 +510,11 @@ ne pas stopper firefox
       (VINF stopper))
     (NP (NC firefox))))
 
+le chat le mange
+(SENT
+  (NP (DET le) (NC chat)
+    (NP (DET le) (NC mange))))
+
 le chat te mange
 (SENT
   (NP (DET le) (NC chat))
@@ -525,3 +530,18 @@ le chat mange toi
   (NP (DET le) (NC chat))
   (VN (V mange))
   (NP (PRO toi)))
+
+
+l'homme mange le chat
+(SENT
+  (NP (NPP l'homme))
+  (VN (V mange))
+  (NP (DET le) (NC chat)))
+
+le chat mange l'homme
+(SENT
+  (NP (DET le) (NC chat))
+  (VN (V mange) (VPP l'homme)))
+
+getBase("est-ce") donne "est-ce" :(       idem pour "c'est"
+getBase("suis") donne "être" et pas "suivre"

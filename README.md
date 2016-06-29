@@ -28,6 +28,8 @@ Examples of sentences you could type (French) :
 
 un petit chat noir mange une souris blanche
 
+la souris est jolie
+
 qui mange la souris ?
 
 la souris mange qui ?

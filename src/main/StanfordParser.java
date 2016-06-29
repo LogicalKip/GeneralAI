@@ -241,6 +241,10 @@ public class StanfordParser {
 		if (t.value().equals("SENT")) {
 			SimpleSentence res;
 			Tree[] children = t.children();
+			if (children.length < 3) {
+				throw new WrongGrammarRuleException();
+			}
+			
 			int i = 0;
 
 			IEntity subject = NP(children[i]);

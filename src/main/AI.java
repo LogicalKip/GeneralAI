@@ -13,8 +13,8 @@ import exceptions.NotEnoughKnowledgeException;
 import exceptions.ParserException;
 import exceptions.WrongGrammarRuleException;
 import grammar.AbstractConcept;
+import grammar.Be;
 import grammar.DeclarativeSentence;
-import grammar.SimpleSentence;
 import grammar.Designation;
 import grammar.Entity;
 import grammar.EntityConcept;
@@ -26,6 +26,7 @@ import grammar.Knowing;
 import grammar.Myself;
 import grammar.Order;
 import grammar.Sentence;
+import grammar.SimpleSentence;
 import grammar.StartSoftware;
 import grammar.StativeSentence;
 import grammar.Stop;
@@ -35,21 +36,21 @@ import simplenlg.features.Tense;
 import simplenlg.framework.NLGElement;
 
 /*
- * TODO list :
+ * TODO list (sans ordre particulier) :
  * 
  * rajouter les nouveaux verbes d'état dynamiques comme pour ceux d'action
  * 
  * phrases d'état : pas besoin que la phrase avec "être" soit dans les faits. "le chat est quoi/petit ?" il faut aussi regarder dans les entités connues et leurs adjectifs quand c'est le verbe être
  * 
- * "je suis un homme" -> getBase() donne suivre ou être ?
- * 
  * mergeEntities : adjectifs à fusionner
+ * 
+ * indiquer dans le readme comment mettre, depuis eclipse, la doc en ligne de la bibli en hover
  * 
  * tu/le chat est quoi ? -> quelle_entité et quel_adjectif
  * 
  * pronom personnel 3ème personne
  * 
- * Grammar : factorisation possible ?
+ * méthodes de StanfordParser : factorisation possible ?
  * 
  * dire monsieur aléatoirement au lieu de tout le temps
  * 
@@ -75,9 +76,13 @@ import simplenlg.framework.NLGElement;
  * 
  * faire en sorte que les say en dur soient des Sentence créées dynamiquement (donc dans le langage de l'utilisateur), comme pour "je ne sais pas"
  * 
- * phrases négatives : vérification des incohérences (que faire si ça arrive ?) (on risque aussi de mergeEntities 2 entités qui possèdent des phrases négatives mutuellement exclusives)
+ * phrases négatives : vérification des incohérences (que faire si ça arrive ?) (on risque aussi de mergeEntities 2 entités qui possèdent des phrases mutuellement exclusives)
+ * 
+ * ArrayIndexOutOfBoundsException par manque de if dans la grammaire (par exemple avec "le chat mange l'homme")
  * 
  * apostrophes d'élision (en entrée) : "l'homme", "n'est", etc
+ * 
+ * pronoms personnels COD (le chat te regarde) (apparement SNLP affiche une erreur avec "je te vois")
  * 
  * factoriser les messages de NotEnoughKnowledgeException (dans le constructeur) à partir du concept dont la designation est manquante
  * 
@@ -102,7 +107,7 @@ import simplenlg.framework.NLGElement;
  * 
  * Changer la voix passive selon ce qui était demandé (p.setFeature(Feature.PASSIVE, true);) ? : (qui mange la pomme vs john mange quoi) Passive (eg, "John eats an apple" vs "An apple is eaten by John")
  * 
- * ne pas faire confiance à l'utilisateur
+ * ne pas faire confiance à l'utilisateur (ex : gérer les crashs pour "qui mange elfhsk efks  ?")
  * 
  * plusieurs faits dans une phrase (ET, virgule)
  * 
@@ -119,6 +124,12 @@ import simplenlg.framework.NLGElement;
  * Deux désignations d'un genre différent peuvent (probablement) désigner le même concept. C'est le mot/désignation qui a un genre au final, pas le concept lui-même
  * 
  * A debugger :
+ * 
+ qu(o)i est pas quoi ?
+[AI] Je ne comprends pas, monsieur
+
+le chat est pas grand
+[AI] Je ne comprends pas, monsieur.
  * 
 [AI] Initializing...
 [AI] Ready.
@@ -163,6 +174,9 @@ qui est pas quoi ?
   (NP (DET le) (NC chat)
     (MWN (N mange) (DET le) (N chien))))
 [AI] I don't understand that.
+ *
+ le chat mange le chat
+[AI] I'm not aware of PROBLEM. In fact, I don't even know any of those things
  */
 
 public class AI {
@@ -236,7 +250,7 @@ public class AI {
 					designations.get(0).getValue();
 
 		if (similarEntities.isEmpty()) {
-			res += "In fact, I don't even know any " + designation;
+			res += "In fact, I don't even know any " + designation + ".";
 		} else {
 			res += "I only know of :";
 			for (Entity e : similarEntities) {
@@ -336,13 +350,15 @@ public class AI {
 			Verb meaning = (Verb) simpleSentence.getVerb();
 
 			if (simpleSentence instanceof StativeSentence) {
-				StativeSentence stativeSentence = (StativeSentence) simpleSentence;
-				((Entity) stativeSentence.getSubject()).addCharacteristic(stativeSentence.getAdjective());
-				
-				this.entitiesKnown.addAll(newEntities);
+				if (meaning instanceof Be) {
+					StativeSentence stativeSentence = (StativeSentence) simpleSentence;
+					((Entity) stativeSentence.getSubject()).addCharacteristic(stativeSentence.getAdjective());
+					
+					this.entitiesKnown.addAll(newEntities);
+				}
 			} else {
+				DeclarativeSentence decl = (DeclarativeSentence) simpleSentence;
 				if (meaning instanceof HasSameMeaningAs) {
-					DeclarativeSentence decl = (DeclarativeSentence) simpleSentence;
 					if (decl.getSubject() instanceof Entity &&
 							decl.getObject() instanceof Entity) {
 						mergeEntityConcepts(
@@ -353,7 +369,6 @@ public class AI {
 					this.entitiesKnown.addAll(newEntities);
 				}
 			}
-			
 			
 			removeDuplicatesFromKnowledge();
 			say(translator.getUnderstoodSentence());
