@@ -5,8 +5,9 @@ package grammar;
  * A singleton
  *
  */
-public class Be extends StativeVerb {
+public class Be extends Verb {
 	private Be() {
+	    super(true, true);
 	}
 	
 	private static Be instance;

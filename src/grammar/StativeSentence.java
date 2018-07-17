@@ -4,24 +4,24 @@ package grammar;
  * A sentence with a stative verb, and an adjective as "object"
  */
 public class StativeSentence extends SimpleSentence {
-	private StativeVerb verb;
+	private Verb verb;
 
 	private Adjective adjective;
 
-	public StativeSentence(IEntity subject, StativeVerb verb, Adjective a) {
+	public StativeSentence(IEntity subject, Verb verb, Adjective a) {
 		super(subject);
 		this.verb = verb;
 		this.adjective = a;
 	}
 
 	@Override
-	public AbstractVerb getVerb() {
+	public Verb getVerb() {
 		return verb;
 	}
 
 	@Override
 	public Object[] split() {
-		Object res[] =  {this.getSubject(), this.getVerb(), this.adjective};
+        Object[] res = {this.getSubject(), this.getVerb(), this.adjective};
 		return res;
 	}
 
@@ -36,7 +36,7 @@ public class StativeSentence extends SimpleSentence {
 			return 
 					this.getSubject().equals(s.getSubject()) && 
 					this.getVerb().equals(s.getVerb()) && 
-					this.adjective.equals(s.getAdjective());
+					this.getAdjective().equals(s.getAdjective());
 		}
 		return super.equals(otherObject);
 	}

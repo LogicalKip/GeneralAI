@@ -1,9 +1,8 @@
 package exceptions;
 
-import java.util.List;
-
-import grammar.Adjective;
 import grammar.EntityConcept;
+
+import java.util.List;
 
 /**
  * Means someone (probably the user) is referring to an entity corresponding to a certain description (ex : "you know, the black cat"), but the AI has no idea who this is referring to, probably because it has simply never heard of it

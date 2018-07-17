@@ -2,7 +2,6 @@ package grammar;
 
 /**
  * What is the man talking to the AI
- *
  */
 public class HumanUserConcept extends EntityConcept {
 	private HumanUserConcept() {

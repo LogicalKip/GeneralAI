@@ -2,7 +2,6 @@ package grammar;
 
 /**
  * Means (for now...) stopping the AI
- * @author charles
  *
  */
 public class Stop extends Verb {

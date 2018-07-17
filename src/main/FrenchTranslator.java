@@ -1,19 +1,8 @@
 package main;
 
-import grammar.Be;
-import grammar.DefiniteDeterminer;
-import grammar.Designation;
-import grammar.EntityInterrogative;
-import grammar.Explain;
-import grammar.Gender;
-import grammar.HasSameMeaningAs;
-import grammar.IndefiniteDeterminer;
-import grammar.Knowing;
-import grammar.Not;
-import grammar.StartSoftware;
-import grammar.Stop;
-import grammar.Understand;
+import grammar.*;
 import simplenlg.features.Person;
+import simplenlg.framework.LexicalCategory;
 import simplenlg.lexicon.XMLLexicon;
 
 public class FrenchTranslator extends Translator {
@@ -24,10 +13,13 @@ public class FrenchTranslator extends Translator {
 
 	@Override
 	public void addBasicVocabulary() {
+	    improveLexicon();
+
 		this.vocabulary.add(new Designation("quoi", EntityInterrogative.getInstance()));
 		this.vocabulary.add(new Designation("qui", EntityInterrogative.getInstance()));
 		
 		this.vocabulary.add(new Designation("signifier", HasSameMeaningAs.getInstance()));
+		this.vocabulary.add(new Designation("lancer", StartSoftware.getInstance()));
 		this.vocabulary.add(new Designation("démarrer", StartSoftware.getInstance()));
 
 		this.vocabulary.add(new Designation("éteindre", Stop.getInstance()));
@@ -35,9 +27,10 @@ public class FrenchTranslator extends Translator {
 
 		this.vocabulary.add(new Designation("être", Be.getInstance()));
 		this.vocabulary.add(new Designation("savoir",  Knowing.getInstance()));
-		this.vocabulary.add(new Designation("définir", Explain.getInstance()));
-		this.vocabulary.add(new Designation("comprendre", Understand.getInstance()));
-		
+        this.vocabulary.add(new Designation("comprendre", Understand.getInstance()));
+        this.vocabulary.add(new Designation("expliquer", Explain.getInstance()));
+        this.vocabulary.add(new Designation("définir", Explain.getInstance()));
+
 
 		this.vocabulary.add(new Designation("pas", Not.getInstance()));
 
@@ -48,14 +41,19 @@ public class FrenchTranslator extends Translator {
 		this.vocabulary.add(new Designation("un", new IndefiniteDeterminer(masculine)));
 		this.vocabulary.add(new Designation("une", new IndefiniteDeterminer(feminine)));
 	}
-	
-	@Override
+
+    private void improveLexicon() {
+        this.getXMLLexicon().getWord("définir", LexicalCategory.VERB);
+        this.getXMLLexicon().getWord("démarrer", LexicalCategory.VERB);
+    }
+
+    @Override
 	public String getLanguageParameterForGetDefProgram() {
 		return "fr";
 	}
 
 	@Override
-	public XMLLexicon getXMLLexicon() {
+	protected XMLLexicon loadXMLLexicon() {
 		return new simplenlg.lexicon.french.XMLLexicon("res/default-french-lexicon.xml");
 	}
 	

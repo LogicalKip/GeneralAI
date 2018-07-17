@@ -4,7 +4,6 @@ package grammar;
  * Determiner of a noun, such as "the", "a"
  * Different genders mean different determiners
  * 
- * @author charles
  *
  */
 public abstract class Determiner extends AbstractConcept {

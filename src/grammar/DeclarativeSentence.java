@@ -3,18 +3,18 @@ package grammar;
 import java.util.List;
 
 public class DeclarativeSentence extends SimpleSentence {
-	private AbstractVerb verb;
+	private Verb verb;
 
 	private IEntity object;
 
-	public DeclarativeSentence(IEntity subject, AbstractVerb verb, IEntity object) {
+	public DeclarativeSentence(IEntity subject, Verb verb, IEntity object) {
 		super(subject);
 		this.object = object;
 		this.verb = verb;
 	}
 
 	@Override
-	public AbstractVerb getVerb() {
+	public Verb getVerb() {
 		return verb;
 	}
 
@@ -36,7 +36,7 @@ public class DeclarativeSentence extends SimpleSentence {
 			return 
 					this.getSubject().equals(s.getSubject()) && 
 					this.getVerb().equals(s.getVerb()) && 
-					this.object.equals(s.getObject());
+					this.getObject().equals(s.getObject());
 		}
 		return super.equals(otherObject);
 	}
@@ -52,7 +52,6 @@ public class DeclarativeSentence extends SimpleSentence {
 
 	@Override
 	public Object[] split() {
-		Object res[] =  {this.getSubject(), this.getVerb(), this.getObject()};
-		return res;
+        return new Object[]{this.getSubject(), this.getVerb(), this.getObject()};
 	}
 }

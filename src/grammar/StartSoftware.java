@@ -2,7 +2,6 @@ package grammar;
 
 /**
  * E.g : "start", "launch", usually followed by the software to start
- * @author charles
  *
  */
 public class StartSoftware extends Verb {

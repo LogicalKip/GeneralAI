@@ -35,7 +35,7 @@ public abstract class SimpleSentence extends Sentence implements Cloneable {
 		return subject;
 	}
 
-	public abstract AbstractVerb getVerb();
+	public abstract Verb getVerb();
 
 
 	public void replace(Entity from, Entity to) {
@@ -50,7 +50,7 @@ public abstract class SimpleSentence extends Sentence implements Cloneable {
 		return res;
 	}
 	
-	protected void addInIfEntity(List<Entity> list, IEntity object) {
+	void addInIfEntity(List<Entity> list, IEntity object) {
 		if (object instanceof Entity) {
 			list.add((Entity)object);
 		}

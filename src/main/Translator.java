@@ -39,7 +39,6 @@ import simplenlg.framework.NLGElement;
 import simplenlg.framework.NLGFactory;
 import simplenlg.framework.WordElement;
 import simplenlg.lexicon.Lexicon;
-import simplenlg.lexicon.XMLLexicon;
 import simplenlg.phrasespec.NPPhraseSpec;
 import simplenlg.phrasespec.SPhraseSpec;
 import simplenlg.phrasespec.VPPhraseSpec;
@@ -48,7 +47,6 @@ import simplenlg.realiser.Realiser;
 /**
  * Turns the internal, abstract concepts of the AI in something readable to the user.
  * Linked to a human language, it's the one that knows that language's vocabulary and special rules
- * @author charles
  *
  */
 public abstract class Translator {
@@ -69,9 +67,8 @@ public abstract class Translator {
 		this.ai = ai;
 		this.languageName = language;
 
-		this.vocabulary = new LinkedList<Designation>();
+		this.vocabulary = new LinkedList<>();
 		this.addBasicVocabulary();
-		this.lexicon = getXMLLexicon();
 		this.nlgFactory = new NLGFactory(lexicon);
 		this.realiser = new Realiser();
 	}
@@ -295,7 +292,14 @@ public abstract class Translator {
 		return getDeterminerFor(entity, false);
 	}
 
-	public abstract XMLLexicon getXMLLexicon();
+	public Lexicon getXMLLexicon() {
+	    if (this.lexicon == null) {
+	        this.lexicon = loadXMLLexicon();
+        }
+	    return this.lexicon;
+    }
+
+    protected abstract Lexicon loadXMLLexicon();
 
 	private String getBestDesignation(AbstractConcept concept) {
 		int max = -1;
@@ -314,7 +318,7 @@ public abstract class Translator {
 	}
 
 	public List<Designation> getDesignations(AbstractConcept concept) {
-		List<Designation> res = new LinkedList<Designation>();
+		List<Designation> res = new LinkedList<>();
 		for (Designation designation : this.vocabulary) {
 			if (designation.getDesignatedConcept().equals(concept)) {
 				res.add(designation);
@@ -351,7 +355,7 @@ public abstract class Translator {
 
 
 	public static String getBaseSingularPersonalPronoun(Lexicon lexicon, Person p) {
-		Map<String, Object> features = new HashMap<String, Object>();
+		Map<String, Object> features = new HashMap<>();
 		features.put(Feature.NUMBER, NumberAgreement.SINGULAR);
 		features.put(Feature.PERSON, p);
 
@@ -361,7 +365,7 @@ public abstract class Translator {
 	}
 	
 	public static String getBasePluralPersonalPronoun(Lexicon lexicon, Person p) {
-		Map<String, Object> features = new HashMap<String, Object>();
+		Map<String, Object> features = new HashMap<>();
 		features.put(Feature.NUMBER, NumberAgreement.PLURAL);
 		features.put(Feature.PERSON, p);
 
