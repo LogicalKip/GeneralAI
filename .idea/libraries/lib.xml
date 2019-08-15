@@ -1,13 +1,11 @@
 <component name="libraryTable">
   <library name="lib">
     <CLASSES>
-      <root url="file://$PROJECT_DIR$/lib" />
+      <root url="jar://$PROJECT_DIR$/lib/lexAccess2011dist.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lvg2011api.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lexCheck2006api.jar!/" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES>
-      <root url="file://$PROJECT_DIR$/lib" />
-    </SOURCES>
-    <jarDirectory url="file://$PROJECT_DIR$/lib" recursive="false" />
-    <jarDirectory url="file://$PROJECT_DIR$/lib" recursive="false" type="SOURCES" />
+    <SOURCES />
   </library>
 </component>

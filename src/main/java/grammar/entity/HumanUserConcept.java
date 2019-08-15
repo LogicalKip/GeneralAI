@@ -1,0 +1,18 @@
+package grammar.entity;
+
+/**
+ * What is the man talking to the main.AI
+ */
+public class HumanUserConcept extends EntityConcept {
+	private HumanUserConcept() {
+	}
+	
+	private static HumanUserConcept instance;
+	
+	public static HumanUserConcept getInstance() {
+		if (instance == null) {
+			instance = new HumanUserConcept();
+		}
+		return instance;
+	}
+}
