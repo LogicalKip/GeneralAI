@@ -1,7 +1,7 @@
 package grammar.entity;
 
 /**
- * The main.AI itself
+ * The AI itself
  * A singleton
  */
 public class Myself extends Entity {

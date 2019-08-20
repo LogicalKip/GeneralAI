@@ -1,7 +1,7 @@
 package grammar.verb;
 
 /**
- * Means (for now...) stopping the main.AI
+ * Means (for now...) stopping the AI
  *
  */
 public class Stop extends Verb {

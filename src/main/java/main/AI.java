@@ -10,7 +10,6 @@ import grammar.sentence.Sentence;
 import grammar.sentence.SimpleSentence;
 import grammar.sentence.StativeSentence;
 import grammar.verb.*;
-import output.FrenchTranslator;
 import output.Translator;
 import simplenlg.features.Tense;
 import simplenlg.framework.NLGElement;
@@ -18,6 +17,7 @@ import simplenlg.framework.NLGElement;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.rmi.UnexpectedException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -25,18 +25,22 @@ import java.util.Scanner;
 
 /**
  * TODO list (sans ordre particulier) :
+ *
+ * le chat qui mange la souris mange quoi ?
+ *
+ * catch outOfBoundseXception si pas assez de token pour une règle (rediriger vers la prochain regle ?)
  * 
  * phrases d'état : pas besoin que la phrase avec "être" soit dans les faits. "le chat est quoi/petit ?" il faut aussi regarder dans les entités connues et leurs adjectifs quand c'est le verbe être
  * 
  * pronoms personnels COD (le chat te regarde)
  * 
- * apostrophes d'élision (en entrée) : "l'homme", "n'est", etc
+ * réponses contextuelles, peut-être le matou mange quoi -> je ne sais pas, jamais entendu parler de matou -> matou signifie chat/un chat est un animal/etc, dans ce cas, le matou mange la souris. Une liste de questions auxquelles on a répondu "je ne sais pas" (avec : au fait, maintenant je sais que X mange Y) ?
  * 
  * Liste de synonymes pour traiter "signifie" ? ça aiderait aussi pour "x signifie y ?" (x,y € {chat, quoi})
  * 
  * si on autorise les mots absents du lexique (grâce à leur position), comment connaitre leurs bases, conjugaisons, pluriels, etc ?
  * 
- * il faudrait déplacer "User" et "main.AI" (.instance()) dans entitiesKnown. Nécessaire pour "tu es grand. qui est grand ?"
+ * il faudrait déplacer "User" et "AI" (.instance()) dans entitiesKnown. Nécessaire pour "tu es grand. qui est grand ?"
  * 
  * mergeEntities : adjectifs à fusionner
  * 
@@ -95,24 +99,24 @@ import java.util.Scanner;
  *
  * si l'utilisateur utilise des verbes d'état (Stative) inconnus, suivis d'un adjectif comme prévu, devrait-on les reconnaitre comme tels (Verb.IS_STATIVE_VERB = true), et rajouter la phrase dans la liste des faits (et bien sûr aucun lien concernant l'adjectif et l'entité, car ce verbe n'a aucun sens pour l'ia) ?
  * 
- *     
+ * passer la phrase en .lower() ? (pb avec noms propres plus tard ?)
  *     
  * A debugger :
  * 
  * ex-problème datant de stanford, qui pourrait se reposer quand on autorisera des mots absents du lexique, en en déduisant le type selon la position
- * [main.AI] Initializing...
- * [main.AI] Ready.
+ * [AI] Initializing...
+ * [AI] Ready.
  * un chat blanc mange une croquette
- * [main.AI] Compris.
+ * [AI] Compris.
  * qui mange quoi ?
- * [main.AI] Le chat blanc mangerait **le** croquette.
+ * [AI] Le chat blanc mangerait **le** croquette.
  * car le mot n'est pas dans le lexique. Même en demandant un "la", ça met un "le" par défaut car le genre n'est pas connu dans le lexique je suppose
  * 
  * qui est pas quoi ?
  * (probleme car "être" suppose un adjectif, tel que codé actuellement, alors que "quoi" représente WHAT_ENTITY, on n'a pas de WHAT_ADJECTIVE)
  * 
  * un/le chat nettoie le chat
- * [main.AI] I'm not aware of PROBLEM. In fact, I don't even know any of those things
+ * [AI] I'm not aware of PROBLEM. In fact, I don't even know any of those things
  */
 
 public class AI {
@@ -130,21 +134,17 @@ public class AI {
     private Translator translator;
     private FrenchGrammar parser;
 
-    public AI() {
-        this.translator = new FrenchTranslator(this);
+    public AI(Translator translator) {
+        this.translator = translator;
         say("Initializing...");
 
         this.knowledge = new LinkedList<>();
         this.addBasicKnowledge();
         this.stopProgram = false;
         this.entitiesKnown = new LinkedList<>();
-        this.parser = new FrenchGrammar(translator.getXMLLexicon(), translator.getVocabulary(), this.entitiesKnown);
+        this.parser = new FrenchGrammar(this.translator.getXMLLexicon(), this.translator.getVocabulary(), this.entitiesKnown);
 
         kb = new Scanner(System.in);
-    }
-
-    public FrenchGrammar getParser() {
-        return parser;
     }
 
     public void start() {
@@ -157,7 +157,7 @@ public class AI {
         terminate();
     }
 
-    public void parseAndProcessSentence(String input) {
+    void parseAndProcessSentence(String input) {
         try {
             Sentence parsedInput = parser.parse(input);
 
@@ -174,6 +174,8 @@ public class AI {
             processNoSuchEntityException(e);
         } catch (WrongGrammarRuleException e) {
             say(getIDontUnderstandSentence());
+        } catch (UnexpectedException e) {
+            e.printStackTrace();
         }
     }
 
@@ -193,7 +195,7 @@ public class AI {
                 designations.get(0).getValue();
 
         if (similarEntities.isEmpty()) {
-            res.append("In fact, I don't even know any ").append(designation).append("");
+            res.append("In fact, I don't even know any ").append(designation);
         } else {
             res.append("I only know of :");
             for (Entity e : similarEntities) {
@@ -212,10 +214,6 @@ public class AI {
 
     public List<SimpleSentence> getKnowledge() {
         return knowledge;
-    }
-
-    public boolean isStopProgram() {
-        return stopProgram;
     }
 
     private void obeyOrder(Order order) throws NotEnoughKnowledgeException {
@@ -292,7 +290,7 @@ public class AI {
         return output.toString();
     }
 
-    private void processSimpleSentenceFromUser(SimpleSentence simpleSentence, List<Entity> newEntities) {
+    private void processSimpleSentenceFromUser(SimpleSentence simpleSentence, List<Entity> newEntities) throws UnexpectedException {
         if (simpleSentence.isInterrogative()) {
             answer(simpleSentence);
         } else if (this.knowledge.contains(simpleSentence)) {
@@ -331,7 +329,7 @@ public class AI {
                 }
             }
 
-            removeDuplicatesFromKnowledge();
+            removeDuplicatesFromKnowledge();//FIXME useless because of the if ? should use a set instead ?
             if (!hasReplied) {
                 say(translator.getUnderstoodSentence());
             }
@@ -393,13 +391,13 @@ public class AI {
     }
 
 
-    private void answer(SimpleSentence question) {
+    private void answer(SimpleSentence question) throws UnexpectedException {
         if (question.isInterrogative()) {
             if (question.getVerb() instanceof HasSameMeaningAs) {
                 if (question instanceof DeclarativeSentence) {
                     answerQuestionAboutSynonyms(((DeclarativeSentence) question));
                 } else {
-                    System.err.println("ERROR - Question about " + HasSameMeaningAs.getInstance() + " is not a " + DeclarativeSentence.class + ", but a " + question.getClass());
+                    throw new UnexpectedException("ERROR - Question about " + HasSameMeaningAs.getInstance() + " is not a " + DeclarativeSentence.class + ", but a " + question.getClass());
                 }
             } else {
                 List<SimpleSentence> answers = new LinkedList<>();
@@ -630,8 +628,8 @@ public class AI {
      * Searches the given vocabulary for all classLookedFor objects designated by designation.
      * Returns an empty list if none are found
      */
-    public static List<AbstractConcept> getAllConceptsDesignatedBy(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
-        List<AbstractConcept> res = new LinkedList<AbstractConcept>();
+    private static List<AbstractConcept> getAllConceptsDesignatedBy(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
+        List<AbstractConcept> res = new LinkedList<>();
         for (Designation d : getAllDesignationFrom(vocabulary, designation, classLookedFor)) {
             res.add(d.getDesignatedConcept());
         }
@@ -650,7 +648,7 @@ public class AI {
     }
 
 
-    public static List<Designation> getAllDesignationFrom(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
+    private static List<Designation> getAllDesignationFrom(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
         List<Designation> res = new LinkedList<>();
         for (Designation d : vocabulary) {
             if (d.getValue().equals(designation) && classLookedFor.isInstance(d.getDesignatedConcept())) {
@@ -660,7 +658,7 @@ public class AI {
         return res;
     }
 
-    public List<Entity> getEntitiesKnown() {
+    List<Entity> getEntitiesKnown() {
         return entitiesKnown;
     }
 

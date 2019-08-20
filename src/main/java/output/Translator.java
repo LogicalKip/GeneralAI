@@ -1,10 +1,10 @@
 package output;
 
 import exceptions.NotEnoughKnowledgeException;
-import grammar.Gender;
-import grammar.*;
+import grammar.AbstractConcept;
+import grammar.Adjective;
+import grammar.Designation;
 import grammar.determiner.DefiniteDeterminer;
-import grammar.determiner.Determiner;
 import grammar.determiner.IndefiniteDeterminer;
 import grammar.entity.*;
 import grammar.sentence.DeclarativeSentence;
@@ -28,11 +28,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Turns the internal, abstract concepts of the main.AI in something readable to the user.
+ * Turns the internal, abstract concepts of the AI in something readable to the user.
  * Linked to a human language, it's the one that knows that language's vocabulary and special rules
  */
 public abstract class Translator {
-    protected AI ai;
     protected List<Designation> vocabulary;
 
     private final String languageName;
@@ -44,9 +43,8 @@ public abstract class Translator {
     /**
      * @param language In its own language : "français", "english", "deutsch", etc
      */
-    public Translator(AI ai, String language) {
+    public Translator(String language) {
         super();
-        this.ai = ai;
         this.languageName = language;
 
         this.vocabulary = new LinkedList<>();
@@ -61,7 +59,7 @@ public abstract class Translator {
     protected abstract void addBasicVocabulary();
 
     /**
-     * Context : when asked to explain or define something, the main.AI uses a shell script that can take a language parameter such as "fr", "de", "en", etc. It will then returns the definition in that language, for a given word (considered in that language).
+     * Context : when asked to explain or define something, the AI uses a shell script that can take a language parameter such as "fr", "de", "en", etc. It will then returns the definition in that language, for a given word (considered in that language).
      * <p>
      * Override this method to get your definitions in a language other than the default one. See the script for more info.
      */
@@ -78,7 +76,7 @@ public abstract class Translator {
     }
 
     public void say(String stringToSay) {
-        System.out.println("[main.AI] " + stringToSay);
+        System.out.println("[AI] " + stringToSay);
     }
 
 
@@ -207,7 +205,7 @@ public abstract class Translator {
         String res;
 
         NPPhraseSpec element = nlgFactory.createNounPhrase(
-                getDeterminerFor(concept, false),
+                getDeterminerFor(false),
                 getBestDesignation(concept));
         for (String qualifier : qualifiers) {
             AbstractConcept qualifierConcept = AI.getFirstConceptDesignatedBy(getVocabulary(), qualifier, Adjective.class);
@@ -230,49 +228,34 @@ public abstract class Translator {
      *
      * @return How the entity will be represented as a String after some SimpleNLG processing.
      */
-    public String computeEntityString(IEntity entityParam) {
+    private String computeEntityString(IEntity entityParam) {
         return computeEntityString(entityParam, true);
     }
 
-    /**
-     * Returns a determiner that fits the gender of one of the entity's designations
-     */
-    private String getDeterminerFor(Entity entity, boolean definiteDeterminer) {
-        return getDeterminerFor(entity.getConcept(), definiteDeterminer);
-    }
 
     /**
-     * Returns a determiner that fits the gender of one of the entity's designations
+     * Returns a determiner, definite or not
+     * TODO Ideally it should match the gender of one of the designation that will be used, but Simplenlg can correct it for now (la chat -> le chat) a determiner gender 1 will be chosen because there is a designation 1, but what guarantees that the designation 1 will be used ? le bête can be the two chosen words but nlg wil correct it in la bete : "une bête mange une souris" ai.parseAndProcessSentence(" une bête  signifie   un chat ");
      */
-    private String getDeterminerFor(EntityConcept entityConcept, boolean definiteDeterminer) {
-        String determiner = "";
-        for (Designation currDeterminer : this.vocabulary) {
-            if (definiteDeterminer ? currDeterminer.getDesignatedConcept() instanceof DefiniteDeterminer
-                    : currDeterminer.getDesignatedConcept() instanceof IndefiniteDeterminer) {
-                Gender determinerGender = ((Determiner) currDeterminer.getDesignatedConcept()).getGender();
-                for (Designation currEntityDesignation : getDesignations(entityConcept)) {
-                    NounDesignation currNounDesignation = (NounDesignation) currEntityDesignation;
-                    if (currNounDesignation.getGender().equals(determinerGender)) {
-                        return currDeterminer.getValue();
-                    }
-                }
-            }
-        }
-        return determiner;
+    private String getDeterminerFor(boolean definiteDeterminer) {
+        return this.vocabulary.stream()
+                .filter(d -> (definiteDeterminer ? d.getDesignatedConcept() instanceof DefiniteDeterminer
+                        : d.getDesignatedConcept() instanceof IndefiniteDeterminer))
+                .findFirst().get().getValue();
     }
 
     /**
      * Returns a definite determiner that fits the gender of one of the entity's designations
      */
     private String getDefiniteDeterminerFor(Entity entity) {
-        return getDeterminerFor(entity, true);
+        return getDeterminerFor(true);
     }
 
     /**
      * Returns an indefinite determiner that fits the gender of one of the entity's designations
      */
     private String getIndefiniteDeterminerFor(Entity entity) {
-        return getDeterminerFor(entity, false);
+        return getDeterminerFor(false);
     }
 
     public Lexicon getXMLLexicon() {
@@ -316,7 +299,7 @@ public abstract class Translator {
     public Designation getFirstDesignation(AbstractConcept concept) throws NotEnoughKnowledgeException {
         List<Designation> d = getDesignations(concept);
         if (d.isEmpty()) {
-            throw new NotEnoughKnowledgeException("main.AI doesn't know a designation for " + concept);
+            throw new NotEnoughKnowledgeException("AI doesn't know a designation for " + concept);
         } else {
             return d.get(0);
         }

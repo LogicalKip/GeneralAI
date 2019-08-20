@@ -1,7 +1,7 @@
 package grammar.entity;
 
 /**
- * The human talking to the main.AI.
+ * The human talking to the AI.
  * It is implied there can be only one for now.
  * 
  * A singleton

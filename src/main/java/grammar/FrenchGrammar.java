@@ -6,6 +6,9 @@ import grammar.determiner.DefiniteDeterminer;
 import grammar.determiner.Determiner;
 import grammar.determiner.IndefiniteDeterminer;
 import grammar.entity.*;
+import grammar.gender.FeminineGender;
+import grammar.gender.Gender;
+import grammar.gender.MasculineGender;
 import grammar.sentence.DeclarativeSentence;
 import grammar.sentence.Sentence;
 import grammar.sentence.SimpleSentence;
@@ -25,13 +28,14 @@ import simplenlg.lexicon.Lexicon;
 import simplenlg.phrasespec.VPPhraseSpec;
 import simplenlg.realiser.Realiser;
 
+import java.rmi.UnexpectedException;
 import java.util.LinkedList;
 import java.util.List;
 
 //FIXME potential future problem, even if grammar rules as they are now can't make it happen : get/create an entity, add it to newEntities, then rollback because the rule was the wrong one, but the entity is still here. If the sentence ends up correct, there will be a wrong entity added/duplicated. Could be the same with vocab/other things
 
 /**
- * Parses french Strings into Java classes and concepts used by the main.AI, using a tree made of custom grammar rules.
+ * Parses french Strings into Java classes and concepts used by the AI, using a tree made of custom grammar rules.
  */
 public class FrenchGrammar {
 
@@ -56,7 +60,7 @@ public class FrenchGrammar {
         this.newEntities = new LinkedList<>();
     }
 
-    public Sentence parse(String input) throws CantFindSuchAnEntityException, WrongGrammarRuleException {
+    public Sentence parse(String input) throws CantFindSuchAnEntityException, WrongGrammarRuleException, UnexpectedException {
         this.newVocabulary = new LinkedList<>();
         this.newEntities = new LinkedList<>();
 
@@ -76,7 +80,7 @@ public class FrenchGrammar {
     /**
      * First rule of the grammar tree
      */
-    private Sentence start(List<Token> tokens) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
+    private Sentence start(List<Token> tokens) throws WrongGrammarRuleException, CantFindSuchAnEntityException, UnexpectedException {
         int startingIndex = index;
 
         Sentence res;
@@ -110,7 +114,7 @@ public class FrenchGrammar {
     /**
      * A simple sentence with a subject, verb and object, such as "a cat eats a mouse", or "I see what ?"
      */
-    private SimpleSentence simpleSentence(List<Token> tokens) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
+    private SimpleSentence simpleSentence(List<Token> tokens) throws WrongGrammarRuleException, CantFindSuchAnEntityException, UnexpectedException {
         boolean sentenceIsNegated = false;
         boolean sentenceIsInterrogative = false;
 
@@ -154,12 +158,12 @@ public class FrenchGrammar {
                 }
             }
 
-            sentence.setNegative(sentenceIsNegated);
-
             if (nextTokenIsQuestionMark(tokens)) {
                 this.index++;
                 sentenceIsInterrogative = true;
             }
+
+            sentence.setNegative(sentenceIsNegated);
             sentence.setInterrogative(sentenceIsInterrogative);
 
             return sentence;
@@ -175,34 +179,34 @@ public class FrenchGrammar {
     /**
      * nominal group = determiner (adjective)* noun (adjective)*
      */
-    private IEntity nominalGroup(List<Token> tokens) throws WrongGrammarRuleException, CantFindSuchAnEntityException {
+    private IEntity nominalGroup(List<Token> tokens) throws WrongGrammarRuleException, CantFindSuchAnEntityException, UnexpectedException {
         if (canBeDeterminer(tokens.get(this.index))) {
             String determinerString = tokens.get(this.index).getOriginalString();
-            this.index++;
 
-            List<String> adjectivesStrings = new LinkedList<>(goThroughContiguousAdjectives(tokens));
+            List<String> adjectivesStrings = new LinkedList<>();
+            if (adjectiveDetectedAfterThis(tokens)) {
+                adjectivesStrings.addAll(goThroughContiguousAdjectives(tokens));
+            }
+
+            this.index++;
 
             if (canBeNoun(tokens.get(this.index))) {
                 String noun = tokens.get(this.index).getOriginalString();
 
                 if (adjectiveDetectedAfterThis(tokens)) {
-                    this.index++;
                     adjectivesStrings.addAll(goThroughContiguousAdjectives(tokens));
-                    this.index--; // finish on the last adjective
                 }
 
+//                System.out.print("Detected nominal group " + determinerString + " " + noun + ".");
+//                if (adjectivesStrings.size() > 0) {
+//                    System.out.print(" All " + adjectivesStrings.size() + " adjectives : ");
+//                    for (String adjective : adjectivesStrings) {
+//                        System.out.print(adjective + ";");
+//                    }
+//                    System.out.println();
+//                }
 
-                System.out.print("Detected nominal group " + determinerString + " " + noun + ".");
-                if (adjectivesStrings.size() > 0) {
-                    System.out.print(" All " + adjectivesStrings.size() + " adjectives : ");
-                }
-                for (String adjective : adjectivesStrings) {
-                    System.out.print(adjective + ";");
-                }
-                System.out.println();
-
-                Determiner determiner = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), getBase(determinerString, LexicalCategory.DETERMINER), Determiner.class);
-
+                Determiner determiner = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), determinerString, Determiner.class);
 
                 List<Adjective> adjectives = new LinkedList<>();
                 for (String s : adjectivesStrings) {
@@ -215,12 +219,10 @@ public class FrenchGrammar {
                     adjectives.add(adjectiveConcept);
                 }
 
-
                 return processCorrespondingEntity(determiner, adjectives, noun);
 
             }
         }
-
 
         throw new WrongGrammarRuleException();
     }
@@ -228,7 +230,7 @@ public class FrenchGrammar {
     /**
      * Something where an entity is expected, i.e who/what, or a nominal group
      */
-    private IEntity entity(List<Token> tokens) throws CantFindSuchAnEntityException, WrongGrammarRuleException {
+    private IEntity entity(List<Token> tokens) throws CantFindSuchAnEntityException, WrongGrammarRuleException, UnexpectedException {
         int startingIndex = index;
 
         IEntity res;
@@ -336,8 +338,8 @@ public class FrenchGrammar {
     private List<String> goThroughContiguousAdjectives(List<Token> tokens) {
         List<String> res = new LinkedList<>();
 
-        while (this.index < tokens.size() && canBeAdjective(tokens.get(this.index))) {
-            res.add(tokens.get(this.index).getOriginalString());
+        while (this.index + 1 < tokens.size() && canBeAdjective(tokens.get(this.index + 1))) {
+            res.add(tokens.get(this.index + 1).getOriginalString());
             this.index++;
         }
 
@@ -346,9 +348,9 @@ public class FrenchGrammar {
 
 
     /**
-     * Returns the entity corresponding to the given parameters if the main.AI knows about it, or adds an entry with a new entity and/or concept in the new vocabulary/entities otherwise.
+     * Returns the entity corresponding to the given parameters if the AI knows about it, or adds an entry with a new entity and/or concept in the new vocabulary/entities otherwise.
      */
-    private IEntity processCorrespondingEntity(Determiner determiner, List<Adjective> qualifiers, String nounDesignation) throws CantFindSuchAnEntityException {
+    private IEntity processCorrespondingEntity(Determiner determiner, List<Adjective> qualifiers, String nounDesignation) throws CantFindSuchAnEntityException, UnexpectedException {
         IEntity res = null;
         if (isKnownNoun(nounDesignation)) {
             nounDesignation = getBase(nounDesignation, LexicalCategory.NOUN);
@@ -366,7 +368,7 @@ public class FrenchGrammar {
 
             NounDesignation newDesignation = new NounDesignation(nounDesignation, newConcept);
             newDesignation.incrementTimesUserUsedIt();
-            newDesignation.setGender(determiner.getGender());
+            newDesignation.setGender(deduceGender(determiner, nounDesignation));
             newVocabulary.add(newDesignation);
         } else {
             AbstractEntityConcept designatedConcept = (AbstractEntityConcept) designation.getDesignatedConcept();
@@ -386,10 +388,10 @@ public class FrenchGrammar {
                         throw new CantFindSuchAnEntityException((EntityConcept) designatedConcept, getDesignationsOf(qualifiers, getUpdatedVocabulary()));
                     }
                 } else {
-                    System.err.println("There is a 3rd determiner class ? Not expected !");
+                    throw new UnexpectedException("There is a 3rd determiner class ? Not expected ! " + determiner);
                 }
             } else {
-                System.err.println("A concept during the parsing is of neither expected classes. Some code needs an update");
+                throw new UnexpectedException("A concept during the parsing is of neither expected classes. Some code needs an update. " + designatedConcept);
             }
         }
 
@@ -397,7 +399,25 @@ public class FrenchGrammar {
     }
 
     /**
-     * Returns the concept corresponding to the parameter (it is implied that it represents a verb) if it's in the main.AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
+     * Returns the gender of the determiner, or looks up the lexicon if it was unknown (ex : l' can be masculine or feminine)
+     */
+    private Gender deduceGender(Determiner determiner, String nounDesignation) {
+        if (determiner.getGender() == null) {
+            String base = getBase(nounDesignation, LexicalCategory.NOUN);
+            if (this.lexicon.hasWord(base, LexicalCategory.NOUN)) {
+                String genderAccordingToLexicon = this.lexicon.getWord(base, LexicalCategory.NOUN).getFeatureAsString("gender");
+                if (genderAccordingToLexicon.equalsIgnoreCase("FEMININE")) {
+                    return FeminineGender.getInstance();
+                }
+            }
+            return MasculineGender.getInstance();
+        } else {
+            return determiner.getGender();
+        }
+    }
+
+    /**
+     * Returns the concept corresponding to the parameter (it is implied that it represents a verb) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
      */
     private Verb processCorrespondingVerb(String verb) {
         String designation = isKnownVerb(verb) ? getBase(verb, LexicalCategory.VERB) : verb;
@@ -421,7 +441,7 @@ public class FrenchGrammar {
 
 
     /**
-     * Returns the concept corresponding to the parameter (it is implied that it represents an adjective) if it's in the main.AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
+     * Returns the concept corresponding to the parameter (it is implied that it represents an adjective) if it's in the AI vocabulary, or adds an entry with a new concept in the new vocabulary otherwise.
      */
     private Adjective processCorrespondingAdjective(String adjective) {
         String designation = isKnownAdjective(adjective) ? getBase(adjective, LexicalCategory.ADJECTIVE) : adjective;

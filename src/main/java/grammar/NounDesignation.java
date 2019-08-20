@@ -1,5 +1,7 @@
 package grammar;
 
+import grammar.gender.Gender;
+
 public class NounDesignation extends Designation {
 
 	public NounDesignation(String value, AbstractConcept designatedConcept) {

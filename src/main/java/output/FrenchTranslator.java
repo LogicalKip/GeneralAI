@@ -1,18 +1,21 @@
 package output;
 
-import grammar.*;
+import grammar.Designation;
+import grammar.gender.FeminineGender;
+import grammar.gender.Gender;
+import grammar.Not;
 import grammar.determiner.DefiniteDeterminer;
 import grammar.determiner.IndefiniteDeterminer;
 import grammar.entity.EntityInterrogative;
+import grammar.gender.MasculineGender;
 import grammar.verb.*;
 import simplenlg.features.Person;
 import simplenlg.framework.LexicalCategory;
 import simplenlg.lexicon.XMLLexicon;
-import main.AI;
 public class FrenchTranslator extends Translator {
 
-	public FrenchTranslator(AI ai) {
-		super(ai, "français");
+	public FrenchTranslator() {
+		super("français");
 	}
 
 	@Override
@@ -35,13 +38,13 @@ public class FrenchTranslator extends Translator {
         this.vocabulary.add(new Designation("expliquer", Explain.getInstance()));
         this.vocabulary.add(new Designation("définir", Explain.getInstance()));
 
-
 		this.vocabulary.add(new Designation("pas", Not.getInstance()));
 
-		Gender feminine = new Gender();
-		Gender masculine = new Gender();
+		Gender feminine = FeminineGender.getInstance();
+		Gender masculine = MasculineGender.getInstance();
 		this.vocabulary.add(new Designation("le", new DefiniteDeterminer(masculine)));
 		this.vocabulary.add(new Designation("la", new DefiniteDeterminer(feminine)));
+		this.vocabulary.add(new Designation("l'", new DefiniteDeterminer(null)));
 		this.vocabulary.add(new Designation("un", new IndefiniteDeterminer(masculine)));
 		this.vocabulary.add(new Designation("une", new IndefiniteDeterminer(feminine)));
 	}

@@ -17,7 +17,7 @@ public class Tokenizer {
     public List<Token> tokenize(String input) {
         List<Token> res = new ArrayList<>();
         for (String stringTrimmed : input.trim().split(" +")) {
-            String[] split = stringTrimmed.split("(?<![.!;?]+)(?=[.!;?]+)");
+            String[] split = stringTrimmed.split("(?<![.!;?])(?=[.!;?])|(?<=')"); // Splits before strings of punctuation "??" and after quotes
             for (String currentString : split) {
                 Token token;
 
@@ -25,8 +25,10 @@ public class Tokenizer {
                     token = new QuestionMarkToken(currentString);
                 } else if (currentString.matches("[.!;]+")) {
                     token = new MiscFinalPunctuationToken(currentString);
-                } else if (currentString.equalsIgnoreCase("ne")) {
+                } else if (currentString.matches("ne|n'")) {
                     token = new NeToken(currentString);
+                } else if (currentString.matches("l'")) {
+                    token = new DeterminerToken(currentString);
                 } else {
                     List<WordElement> correspondingWords = lexicon.getWordsFromVariant(currentString);
 
@@ -40,7 +42,6 @@ public class Tokenizer {
                         token = computeTokenWhenMultiplePossibilities(correspondingWords, currentString);
                     }
                 }
-
 
                 res.add(token);
             }
@@ -82,7 +83,9 @@ public class Tokenizer {
             case "PRONOUN":
                 token = new PronounToken(originalString);
                 break;
-
+            case "DETERMINER":
+                token = new DeterminerToken(originalString);
+                break;
             default:
                 token = new UndefinedToken(originalString);
                 break;

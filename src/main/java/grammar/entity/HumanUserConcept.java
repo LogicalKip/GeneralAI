@@ -1,7 +1,7 @@
 package grammar.entity;
 
 /**
- * What is the man talking to the main.AI
+ * What is the man talking to the AI
  */
 public class HumanUserConcept extends EntityConcept {
 	private HumanUserConcept() {

@@ -1,7 +1,7 @@
 package grammar.entity;
 
 /**
- * What is an main.AI.
+ * What is an AI.
  * A singleton
  */
 public class AIConcept extends EntityConcept {

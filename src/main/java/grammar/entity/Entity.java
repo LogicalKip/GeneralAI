@@ -2,8 +2,8 @@ package grammar.entity;
 
 import grammar.Adjective;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Think of {@link EntityConcept} objects as classes and of {@link Entity} objects as instances of classes.
@@ -12,7 +12,7 @@ import java.util.List;
 public class Entity implements IEntity {
 	private EntityConcept concept;
 	
-	private List<Adjective> characteristics;
+	private Set<Adjective> characteristics;
 
 	public EntityConcept getConcept() {
 		return concept;
@@ -21,25 +21,19 @@ public class Entity implements IEntity {
 	public Entity(EntityConcept concept) {
 		super();
 		this.concept = concept;
-		this.characteristics = new LinkedList<Adjective>();
+		this.characteristics = new HashSet<>();
 	}
 
 	public void setConcept(EntityConcept concept) {
 		this.concept = concept;
 	}
 
-	public List<Adjective> getCharacteristics() {
+	public Set<Adjective> getCharacteristics() {
 		return characteristics;
 	}
 
-	public void setCharacteristics(List<Adjective> characteristics) {
-		this.characteristics = characteristics;
-	}
-	
 	public void addCharacteristic(Adjective adjective) {
-		if (! this.characteristics.contains(adjective)) {
-			this.characteristics.add(adjective);
-		}
+		this.characteristics.add(adjective);
 	}
 	
 	@Override
