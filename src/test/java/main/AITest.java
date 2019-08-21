@@ -100,9 +100,8 @@ class AITest {
         ok();
         ai.parseAndProcessSentence("qui comprend quoi ?");
         assertEquals("Vous comprendriez le principe et je comprendrais la phrase, monsieur.", lastAIAnswer);
-
         ai.parseAndProcessSentence("explique firefox");
-        assertEquals("Je ne saurais pas définir ça.", lastAIAnswer);
+        assertEquals("Mozilla Firefox [mɒˈzɪlə ˈfaɪɚfɑks] est un navigateur web libre et gratuit, développé et distribué par la Mozilla Foundation avec l'aide de milliers de bénévoles, grâce aux méthodes de développement du logiciel libre/open source et à la liberté du code source.", lastAIAnswer);
     }
 
     private void ok() {

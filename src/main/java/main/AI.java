@@ -10,6 +10,7 @@ import grammar.sentence.Sentence;
 import grammar.sentence.SimpleSentence;
 import grammar.sentence.StativeSentence;
 import grammar.verb.*;
+import module.WikipediaModule;
 import output.Translator;
 import simplenlg.features.Tense;
 import simplenlg.framework.NLGElement;
@@ -26,38 +27,40 @@ import java.util.Scanner;
 /**
  * TODO list (sans ordre particulier) :
  *
+ * quoi [être] [XXXX] ? si ne sait pas, recherche avec WikipediaModule avant de renoncer
+ *
+ * apprentissage récursif sur wikipédia
+ *
  * le chat qui mange la souris mange quoi ?
  *
  * catch outOfBoundseXception si pas assez de token pour une règle (rediriger vers la prochain regle ?)
- * 
+ *
  * phrases d'état : pas besoin que la phrase avec "être" soit dans les faits. "le chat est quoi/petit ?" il faut aussi regarder dans les entités connues et leurs adjectifs quand c'est le verbe être
- * 
+ *
  * pronoms personnels COD (le chat te regarde)
- * 
+ *
  * réponses contextuelles, peut-être le matou mange quoi -> je ne sais pas, jamais entendu parler de matou -> matou signifie chat/un chat est un animal/etc, dans ce cas, le matou mange la souris. Une liste de questions auxquelles on a répondu "je ne sais pas" (avec : au fait, maintenant je sais que X mange Y) ?
- * 
+ *
  * Liste de synonymes pour traiter "signifie" ? ça aiderait aussi pour "x signifie y ?" (x,y € {chat, quoi})
- * 
+ *
  * si on autorise les mots absents du lexique (grâce à leur position), comment connaitre leurs bases, conjugaisons, pluriels, etc ?
- * 
+ *
  * il faudrait déplacer "User" et "AI" (.instance()) dans entitiesKnown. Nécessaire pour "tu es grand. qui est grand ?"
- * 
+ *
  * mergeEntities : adjectifs à fusionner
- * 
+ *
  * tu/le chat est quoi ? -> quelle_entité et quel_adjectif
- * 
+ *
  * pronom personnel 3ème personne
- * 
+ *
  * dire monsieur aléatoirement au lieu de tout le temps
- * 
+ *
  * où gérer les getXXXSentence plus proprement (sans faire plein d'aller-retours entre classes, si possible) ? Une factory ?
- * 
+ *
  * pluriel
- * 
+ *
  * ordres négatifs ?
- * 
- * quoi [être] [XXXX] ? si ne sait pas, recherche avec showDef avant de renoncer
- * 
+ *
  * oui/non comme concepts. à utiliser lors de la réponse à une yesNo question
  * 
  * faire en sorte que les say en dur soient des Sentence créées dynamiquement, comme pour "je ne sais pas"
@@ -133,6 +136,7 @@ public class AI {
     private boolean stopProgram;
     private Translator translator;
     private FrenchGrammar parser;
+    private WikipediaModule wikipediaModule;
 
     public AI(Translator translator) {
         this.translator = translator;
@@ -140,6 +144,7 @@ public class AI {
 
         this.knowledge = new LinkedList<>();
         this.addBasicKnowledge();
+        this.wikipediaModule = new WikipediaModule();
         this.stopProgram = false;
         this.entitiesKnown = new LinkedList<>();
         this.parser = new FrenchGrammar(this.translator.getXMLLexicon(), this.translator.getVocabulary(), this.entitiesKnown);
@@ -238,7 +243,7 @@ public class AI {
                 say(getExplainWhatSentence());
             } else {
                 try {
-                    say(executeCommand("./showDef " + translator.getLanguageParameterForGetDefProgram() + " " + order.getObject()));
+                    say(wikipediaModule.getDefinition(order.getObject(), translator.getLanguageParameterForGetDefProgram()));
                 } catch (IOException e) {
                     say("Je ne saurais pas définir ça."); //FIXME nlg-created sentence instead of hardcoded
                 }

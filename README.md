@@ -5,7 +5,7 @@ Input/output currently in French. Some abstraction has been made to allow Englis
 
 To use the word defining feature, add showDef to your PATH (Linux).
 
-Intended for Linux. Everything works as well on Windows, except defining words, starting and stopping programs (though if you know how to do those on Windows, you're welcome to help).
+Intended for Linux. Everything works as well on Windows, except starting and stopping programs (though if you know how to do those on Windows, you're welcome to help).
 
 
 Stuff to know before using the AI :
@@ -18,7 +18,6 @@ Stuff to know before using the AI :
 - Don't use capital letters (except in the name of the software you want to start/kill, since it will be lowercased anyway)
 - Don't use plural.
 - Don't use complicated tenses or passive voice. All valid input tenses will be parsed to present.
-- Don't use apostrophes (')
 
 Examples of sentences you could type (French) :
 
@@ -59,6 +58,8 @@ qui mangera quoi ?
 je comprends le principe
 
 tu comprends la phrase
+
+l'homme comprend le programme
 
 qui comprend quoi ?
 
