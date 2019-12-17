@@ -2,6 +2,7 @@ package main;
 
 import grammar.entity.Entity;
 import grammar.sentence.DeclarativeSentence;
+import grammar.sentence.SimpleSentence;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -10,8 +11,13 @@ import org.mockito.stubbing.Answer;
 import output.FrenchTranslator;
 import simplenlg.features.Tense;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Pattern;
+
+import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 
 class AITest {
@@ -32,6 +38,18 @@ class AITest {
     }
 
     @Test
+    void referencingConceptDefinedPreviouslyInTheSentence() {
+        ai.parseAndProcessSentence("un chat regarde le chat");
+        ok();
+    }
+
+    @Test
+    void catMirror() {
+        ai.parseAndProcessSentence("le chat regarde le chat");
+        ok();
+    }
+
+    @Test
     void catEatsMouse() {
         ai.parseAndProcessSentence("un chat mange une souris");
 
@@ -43,14 +61,15 @@ class AITest {
 
         // Facts
         assertEquals(1, ai.getKnowledge().size());
-        assertTrue(ai.getKnowledge().get(0) instanceof DeclarativeSentence);
-        DeclarativeSentence fact = (DeclarativeSentence) ai.getKnowledge().get(0);
-        assertFalse(fact.isNegative());
-        assertFalse(fact.isInterrogative());
-        assertEquals(fact.getSubject(), cat);
-        assertEquals(fact.getObject(), mouse);
-        assertEquals(fact.getTense(), Tense.PRESENT);
-
+        for (SimpleSentence simpleSentence : ai.getKnowledge()) {
+            assertTrue(simpleSentence instanceof DeclarativeSentence);
+            DeclarativeSentence fact = (DeclarativeSentence) simpleSentence;
+            assertFalse(fact.isNegative());
+            assertFalse(fact.isInterrogative());
+            assertEquals(fact.getSubject(), cat);
+            assertEquals(fact.getObject(), mouse);
+            assertEquals(fact.getTense(), Tense.PRESENT);
+        }
         ok();
     }
 
@@ -60,7 +79,7 @@ class AITest {
         ok();
         ai.parseAndProcessSentence("la souris est jolie        ");
         ok();
-        ai.parseAndProcessSentence("qui mange la souris       ?    ");
+        ai.parseAndProcessSentence("  qui mange la souris       ?    ");
         assertEquals("Le petit chat noir mangerait la jolie souris blanche, monsieur.", lastAIAnswer);
         ai.parseAndProcessSentence("la souris mange qui ?");
         assertEquals("Je ne sais pas, monsieur.", lastAIAnswer);
@@ -75,13 +94,13 @@ class AITest {
         ai.parseAndProcessSentence("une bête mange un bel oiseau");
         ok();
         ai.parseAndProcessSentence("qui mangerait qui ?");
-        assertEquals("Le petit chat noir mangerait la jolie souris blanche, la jolie souris blanche mangerait le fromage, la grosse souris mangerait la pomme et la bête mangerait le bel oiseau, monsieur.", lastAIAnswer);
+        answerContainsAll(lastAIAnswer, Arrays.asList("le petit chat noir mangerait la jolie souris blanche", "la jolie souris blanche mangerait le fromage", "la grosse souris mangerait la pomme", "la bête mangerait le bel oiseau"));
         ai.parseAndProcessSentence("un chat signifie une bête");
         ok();
         ai.parseAndProcessSentence("la souris ne mange pas la bête");
         ok();
         ai.parseAndProcessSentence("quoi mange quoi ?");
-        assertEquals("La petite bête noire mangerait la jolie souris blanche, la jolie souris blanche mangerait le fromage, la grosse souris mangerait la pomme et la bête mangerait le bel oiseau, monsieur.", lastAIAnswer);
+        answerContainsAll(lastAIAnswer, Arrays.asList("la petite bête noire mangerait la jolie souris blanche", "la jolie souris blanche mangerait le fromage", "la grosse souris mangerait la pomme", "la bête mangerait le bel oiseau"));
         ai.parseAndProcessSentence("quoi ne mange pas quoi ?");
         assertEquals("La jolie souris blanche ne mangerait pas la bête, monsieur.", lastAIAnswer);
         ai.parseAndProcessSentence("la souris mange le chat ?");
@@ -89,7 +108,7 @@ class AITest {
         ai.parseAndProcessSentence("la souris ne mange pas le chat ???");
         assertEquals("En effet.", lastAIAnswer);
         ai.parseAndProcessSentence("qui mangera quoi ?");
-        assertEquals("Le petit chat noir mangerait la jolie souris blanche, la jolie souris blanche mangerait le fromage, la grosse souris mangerait la pomme et le chat mangerait le bel oiseau, monsieur.", lastAIAnswer);
+        answerContainsAll(lastAIAnswer, Arrays.asList("le petit chat noir mangerait la jolie souris blanche", "la jolie souris blanche mangerait le fromage", "la grosse souris mangerait la pomme", "le chat mangerait le bel oiseau"));
         ai.parseAndProcessSentence("l'oiseau regarde l'araignée");//FIXME test gender unknown or deduced from noun by using lexicon
         ok();
         ai.parseAndProcessSentence("qui regarde qui ?");
@@ -99,9 +118,17 @@ class AITest {
         ai.parseAndProcessSentence("tu comprends la phrase");
         ok();
         ai.parseAndProcessSentence("qui comprend quoi ?");
-        assertEquals("Vous comprendriez le principe et je comprendrais la phrase, monsieur.", lastAIAnswer);
+        answerContainsAll(lastAIAnswer, Arrays.asList("vous comprendriez le principe", "je comprendrais la phrase"));
         ai.parseAndProcessSentence("explique firefox");
         assertEquals("Mozilla Firefox [mɒˈzɪlə ˈfaɪɚfɑks] est un navigateur web libre et gratuit, développé et distribué par la Mozilla Foundation avec l'aide de milliers de bénévoles, grâce aux méthodes de développement du logiciel libre/open source et à la liberté du code source.", lastAIAnswer);
+    }
+
+    private void answerContainsAll(String answer, List<String> facts) {
+        Pattern pattern = Pattern.compile("^(?=[A-Z])([^,]+, ){NB_FACTS_FOLLOWED_BY_COMMA}[^,]+ et [^,]+, monsieur\\.$".replaceAll("NB_FACTS_FOLLOWED_BY_COMMA", String.valueOf(facts.size() - 2)), CASE_INSENSITIVE);// starts with caps, contains N - 2 strings separated by commas, then 2 strings separated by "et" and the final ", monsieur".
+        assertTrue(pattern.matcher(answer).find());
+        for (String fact : facts) {
+            assertTrue(answer.toLowerCase().contains(fact.toLowerCase()));
+        }
     }
 
     private void ok() {

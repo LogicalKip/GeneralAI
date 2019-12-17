@@ -36,12 +36,21 @@ public class Designation {
 	public String toString() {
 		return value + " -> " + designatedConcept.toString();
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof Designation) {
+			Designation designation = (Designation) o;
+			return designation.getValue().equals(value) && designation.getDesignatedConcept().equals(designatedConcept);
+		}
+		return false;
+	}
 	
 	public int getTimesUserUsedIt() {
 		return timesUserUsedIt;
 	}
 
-	public void incrementTimesUserUsedIt() {
+	void incrementTimesUserUsedIt() {
 		this.timesUserUsedIt++;
 	}
 

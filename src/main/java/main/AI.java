@@ -19,10 +19,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.rmi.UnexpectedException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Scanner;
+import java.util.*;
 
 /**
  * TODO list (sans ordre particulier) :
@@ -117,16 +114,13 @@ import java.util.Scanner;
  * 
  * qui est pas quoi ?
  * (probleme car "être" suppose un adjectif, tel que codé actuellement, alors que "quoi" représente WHAT_ENTITY, on n'a pas de WHAT_ADJECTIVE)
- * 
- * un/le chat nettoie le chat
- * [AI] I'm not aware of PROBLEM. In fact, I don't even know any of those things
  */
 
 public class AI {
     /**
      * A list of facts learned from the outside
      */
-    private List<SimpleSentence> knowledge;
+    private Set<SimpleSentence> knowledge;
     /**
      * The instances of entity we know about. Ex : that cat, that other cat over there, the user.
      * The ones that have been mentioned last must go at the end of the list so that it can be guessed which one the user will be talking about.
@@ -142,7 +136,7 @@ public class AI {
         this.translator = translator;
         say("Initializing...");
 
-        this.knowledge = new LinkedList<>();
+        this.knowledge = new HashSet<>();
         this.addBasicKnowledge();
         this.wikipediaModule = new WikipediaModule();
         this.stopProgram = false;
@@ -217,7 +211,7 @@ public class AI {
         // Not much for now !
     }
 
-    public List<SimpleSentence> getKnowledge() {
+    public Set<SimpleSentence> getKnowledge() {
         return knowledge;
     }
 
@@ -334,7 +328,6 @@ public class AI {
                 }
             }
 
-            removeDuplicatesFromKnowledge();//FIXME useless because of the if ? should use a set instead ?
             if (!hasReplied) {
                 say(translator.getUnderstoodSentence());
             }
@@ -347,18 +340,6 @@ public class AI {
                 this.entitiesKnown.add(e);
             }
         }
-    }
-
-    private void removeDuplicatesFromKnowledge() {
-        List<SimpleSentence> updatedKnowledge = new LinkedList<>();
-
-        for (SimpleSentence sentence : this.knowledge) {
-            if (!updatedKnowledge.contains(sentence)) {
-                updatedKnowledge.add(sentence);
-            }
-        }
-
-        this.knowledge = updatedKnowledge;
     }
 
     /**

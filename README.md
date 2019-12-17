@@ -3,10 +3,7 @@ You say something to the AI, and the AI says or does something in response. Uses
 
 Input/output currently in French. Some abstraction has been made to allow English, but that would probably still require some tweaking, if at all possible (SimpleNLG-EnFr seems to be made for French).
 
-To use the word defining feature, add showDef to your PATH (Linux).
-
 Intended for Linux. Everything works as well on Windows, except starting and stopping programs (though if you know how to do those on Windows, you're welcome to help).
-
 
 Stuff to know before using the AI :
 - Wait a few seconds before typing your first sentence (wait for "Ready."). 

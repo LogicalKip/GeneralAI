@@ -31,6 +31,7 @@ import simplenlg.realiser.Realiser;
 import java.rmi.UnexpectedException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 //FIXME potential future problem, even if grammar rules as they are now can't make it happen : get/create an entity, add it to newEntities, then rollback because the rule was the wrong one, but the entity is still here. If the sentence ends up correct, there will be a wrong entity added/duplicated. Could be the same with vocab/other things
 
@@ -356,20 +357,31 @@ public class FrenchGrammar {
             nounDesignation = getBase(nounDesignation, LexicalCategory.NOUN);
         }
 
-        Designation designation = AI.getFirstDesignationFrom(getUpdatedVocabulary(), nounDesignation, AbstractEntityConcept.class);
+        Designation designation = AI.getFirstDesignationFrom(actualAIVocabulary, nounDesignation, AbstractEntityConcept.class);
 
         if (designation == null) { // Unknown word
-            EntityConcept newConcept = new EntityConcept();
+            EntityConcept correspondingConcept;
+            
+            String finalNounDesignation = nounDesignation;
+            Optional<Designation> designationFromBeforeInSentence = newVocabulary.stream()
+                    .filter(d -> d instanceof NounDesignation)
+                    .filter(d -> d.getValue().equals(finalNounDesignation))
+                    .findFirst();
+            if (designationFromBeforeInSentence.isPresent()) {
+                correspondingConcept = (EntityConcept) designationFromBeforeInSentence.get().getDesignatedConcept();
+            } else {
+                correspondingConcept = new EntityConcept();
 
-            Entity newEntity = new Entity(newConcept);
+                NounDesignation newDesignation = new NounDesignation(nounDesignation, correspondingConcept);
+                newDesignation.incrementTimesUserUsedIt();
+                newDesignation.setGender(deduceGender(determiner, nounDesignation));
+                newVocabulary.add(newDesignation);
+            }
+
+            Entity newEntity = new Entity(correspondingConcept);
             newEntity.getCharacteristics().addAll(qualifiers);
             res = newEntity;
             this.newEntities.add(newEntity);
-
-            NounDesignation newDesignation = new NounDesignation(nounDesignation, newConcept);
-            newDesignation.incrementTimesUserUsedIt();
-            newDesignation.setGender(deduceGender(determiner, nounDesignation));
-            newVocabulary.add(newDesignation);
         } else {
             AbstractEntityConcept designatedConcept = (AbstractEntityConcept) designation.getDesignatedConcept();
             designation.incrementTimesUserUsedIt();
@@ -478,7 +490,7 @@ public class FrenchGrammar {
 
 
     private static List<String> getDesignationsOf(List<Adjective> adjectives, List<Designation> vocab) {
-        List<String> res = new LinkedList<String>();
+        List<String> res = new LinkedList<>();
 
         for (Designation d : vocab) {
             if (adjectives.contains(d.getDesignatedConcept())) {
@@ -533,7 +545,7 @@ public class FrenchGrammar {
     }
 
     private List<Designation> getUpdatedVocabulary() {
-        List<Designation> res = new LinkedList<Designation>();
+        List<Designation> res = new LinkedList<>();
         res.addAll(actualAIVocabulary);
         res.addAll(newVocabulary);
         return res;
@@ -570,14 +582,14 @@ public class FrenchGrammar {
     /**
      * @return True if the given word is the equivalent of "I" in French
      */
-    public boolean isFirstSingularPersonalPronoun(String word) {
+    private boolean isFirstSingularPersonalPronoun(String word) {
         return Translator.getBaseFirstSingularPersonalPronoun(lexicon).equals(word);
     }
 
     /**
      * @return True if the given word is the equivalent of "You" (as a subject) in French
      */
-    public boolean isSecondSingularPersonalPronoun(String word) {
+    private boolean isSecondSingularPersonalPronoun(String word) {
         return Translator.getBaseSecondSingularPersonalPronoun(lexicon).equals(word);
     }
 
