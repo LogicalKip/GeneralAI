@@ -3,11 +3,13 @@ package grammar.sentence;
 import grammar.Adjective;
 import grammar.entity.IEntity;
 import grammar.verb.Verb;
+import lombok.Getter;
 
 /**
  * A sentence with a stative verb, and an adjective as "object"
  */
 public class StativeSentence extends SimpleSentence {
+	@Getter
 	private Adjective adjective;
 
 	public StativeSentence(IEntity subject, Verb verb, Adjective a) {
@@ -18,10 +20,6 @@ public class StativeSentence extends SimpleSentence {
 	@Override
 	public Object[] split() {
 		return new Object[]{this.getSubject(), this.getVerb(), this.adjective};
-	}
-
-	public Adjective getAdjective() {
-		return adjective;
 	}
 
 	@Override

@@ -13,7 +13,7 @@ import grammar.sentence.StativeSentence;
 import grammar.verb.StartSoftware;
 import grammar.verb.Stop;
 import grammar.verb.Understand;
-import main.AI;
+import lombok.Getter;
 import simplenlg.features.*;
 import simplenlg.framework.*;
 import simplenlg.lexicon.Lexicon;
@@ -21,19 +21,19 @@ import simplenlg.phrasespec.NPPhraseSpec;
 import simplenlg.phrasespec.SPhraseSpec;
 import simplenlg.phrasespec.VPPhraseSpec;
 import simplenlg.realiser.Realiser;
+import util.VocabRetriever;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Turns the internal, abstract concepts of the AI in something readable to the user.
  * Linked to a human language, it's the one that knows that language's vocabulary and special rules
  */
 public abstract class Translator {
+    @Getter
     protected List<Designation> vocabulary;
 
+    @Getter
     private final String languageName;
     private Lexicon lexicon;
     private NLGFactory nlgFactory;
@@ -43,7 +43,7 @@ public abstract class Translator {
     /**
      * @param language In its own language : "français", "english", "deutsch", etc
      */
-    public Translator(String language) {
+    Translator(String language) {
         super();
         this.languageName = language;
 
@@ -65,14 +65,6 @@ public abstract class Translator {
      */
     public String getLanguageParameterForGetDefProgram() {
         return "";
-    }
-
-    public String getLanguageName() {
-        return languageName;
-    }
-
-    public List<Designation> getVocabulary() {
-        return vocabulary;
     }
 
     public void say(String stringToSay) {
@@ -150,13 +142,13 @@ public abstract class Translator {
         return p;
     }
 
-    public SPhraseSpec getSoftwareStartedSentence(String softwareName) throws NotEnoughKnowledgeException {
+    public SPhraseSpec getSoftwareStartedSentence(String softwareName) {
         SPhraseSpec res = nlgFactory.createClause(null, getBestDesignation(StartSoftware.getInstance()), softwareName);
         res.setFeature(Feature.PASSIVE, true);
         return res;
     }
 
-    public SPhraseSpec getSoftwareStoppedSentence(String softwareName) throws NotEnoughKnowledgeException {
+    public SPhraseSpec getSoftwareStoppedSentence(String softwareName) {
         SPhraseSpec res = nlgFactory.createClause(null, getBestDesignation(Stop.getInstance()), softwareName);
         res.setFeature(Feature.PASSIVE, true);
         res.setFeature(Feature.TENSE, Tense.PAST);
@@ -201,21 +193,21 @@ public abstract class Translator {
         return res;
     }
 
-    public String computeEntityString(EntityConcept concept, List<String> qualifiers) {
+    public String computeEntityString(EntityConcept entity, List<String> qualifiers) { // FIXME should just send the adjectives to the exception (see caller) instead of adj -> string -> adj -> string ?
         String res;
 
         NPPhraseSpec element = nlgFactory.createNounPhrase(
                 getDeterminerFor(false),
-                getBestDesignation(concept));
-        for (String qualifier : qualifiers) {
-            AbstractConcept qualifierConcept = AI.getFirstConceptDesignatedBy(getVocabulary(), qualifier, Adjective.class);
-            String qualifierString;
-            if (qualifierConcept == null) {
-                qualifierString = qualifier;
+                getBestDesignation(entity));
+        for (String currentQualifier : qualifiers) {
+            String qualifierChosen;
+            Optional<Adjective> adjectiveConcept = VocabRetriever.getFirstConceptDesignatedBy(getVocabulary(), currentQualifier, Adjective.class);
+            if (adjectiveConcept.isPresent()) {
+                qualifierChosen = getBestDesignation(adjectiveConcept.get());
             } else {
-                qualifierString = getBestDesignation(qualifierConcept);
+                qualifierChosen = currentQualifier;
             }
-            element.addModifier(qualifierString);
+            element.addModifier(qualifierChosen);
         }
 
         res = realiser.realise(element).getRealisation();
@@ -320,7 +312,7 @@ public abstract class Translator {
     }
 
 
-    public static String getBaseSingularPersonalPronoun(Lexicon lexicon, Person p) {
+    private static String getBaseSingularPersonalPronoun(Lexicon lexicon, Person p) {
         Map<String, Object> features = new HashMap<>();
         features.put(Feature.NUMBER, NumberAgreement.SINGULAR);
         features.put(Feature.PERSON, p);
@@ -330,7 +322,7 @@ public abstract class Translator {
         return pronoun.getBaseForm();
     }
 
-    public static String getBasePluralPersonalPronoun(Lexicon lexicon, Person p) {
+    static String getBasePluralPersonalPronoun(Lexicon lexicon, Person p) {
         Map<String, Object> features = new HashMap<>();
         features.put(Feature.NUMBER, NumberAgreement.PLURAL);
         features.put(Feature.PERSON, p);

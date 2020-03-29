@@ -3,21 +3,30 @@ package grammar.sentence;
 import grammar.entity.Entity;
 import grammar.entity.IEntity;
 import grammar.verb.Verb;
+import lombok.Getter;
+import lombok.Setter;
 import simplenlg.features.Tense;
 
 import java.util.LinkedList;
 import java.util.List;
 
 public abstract class SimpleSentence extends Sentence implements Cloneable {
+	@Getter
+	@Setter
 	private Tense tense;
 
+	@Getter
+	@Setter
 	private boolean isNegative;
 
+	@Getter
 	private IEntity subject;
 
+	@Getter
+	@Setter
 	private boolean interrogative;
 
-	public SimpleSentence(IEntity subject, Verb verb) {
+	SimpleSentence(IEntity subject, Verb verb) {
 		super(verb);
 		this.subject = subject;
 		this.interrogative = false;
@@ -27,16 +36,13 @@ public abstract class SimpleSentence extends Sentence implements Cloneable {
 	
 	public abstract Object[] split();
 
-	public boolean isInterrogative() {
-		return interrogative;
-	}
-
-	public void setInterrogative(boolean interrogative) {
+	public SimpleSentence interrogative(boolean interrogative) {
 		this.interrogative = interrogative;
+		return this;
 	}
 
-	public IEntity getSubject() {
-		return subject;
+	public SimpleSentence interrogative() {
+		return this.interrogative(true);
 	}
 
 	public void replace(Entity from, Entity to) {
@@ -56,25 +62,19 @@ public abstract class SimpleSentence extends Sentence implements Cloneable {
 			list.add((Entity)object);
 		}
 	}
-	
-	public boolean isNegative() {
-		return isNegative;
-	}
 
-	public void setNegative(boolean isNegative) {
-		this.isNegative = isNegative;
+	public SimpleSentence negate() {
+		this.isNegative = !this.isNegative;
+		return this;
 	}
 	
 	public void setNegative() {
 		this.isNegative = true;
 	}
 
-	public Tense getTense() {
-		return tense;
-	}
-
-	public void setTense(Tense tense) {
+	public SimpleSentence tense(Tense tense) {
 		this.tense = tense;
+		return this;
 	}
 	
 	@Override

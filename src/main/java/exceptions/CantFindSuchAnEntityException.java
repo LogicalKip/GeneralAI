@@ -1,6 +1,7 @@
 package exceptions;
 
 import grammar.entity.EntityConcept;
+import lombok.Getter;
 
 import java.util.List;
 
@@ -11,7 +12,9 @@ public class CantFindSuchAnEntityException extends Exception {
 
 	private static final long serialVersionUID = 1548727791539077399L;
 
+	@Getter
 	private EntityConcept concept;
+	@Getter
 	private List<String> qualifiers;
 	
 	
@@ -19,15 +22,5 @@ public class CantFindSuchAnEntityException extends Exception {
 		super();
 		this.concept = concept;
 		this.qualifiers = qualifiers;
-	}
-
-
-	public List<String> getQualifiers() {
-		return qualifiers;
-	}
-
-
-	public EntityConcept getConcept() {
-		return concept;
 	}
 }

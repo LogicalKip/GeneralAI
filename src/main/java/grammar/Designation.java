@@ -1,16 +1,23 @@
 package grammar;
 
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * A name that refer to a concept
  * Ex: "kitty" to refer to the concept of cat. There wouldn't be a "kitties" one though, only with the base form, to make it simpler.
  *
  */
 public class Designation {
+	@Getter
 	private String value;
-	
+
+	@Getter
 	private int timesUserUsedIt;
 
+	@Getter
+	@Setter
 	private AbstractConcept designatedConcept;
 
 	public Designation(String value, AbstractConcept designatedConcept) {
@@ -20,18 +27,6 @@ public class Designation {
 		this.designatedConcept = designatedConcept;
 	}
 
-	public String getValue() {
-		return value;
-	}
-
-	public AbstractConcept getDesignatedConcept() {
-		return designatedConcept;
-	}
-
-	public void setDesignatedConcept(AbstractConcept designatedConcept) {
-		this.designatedConcept = designatedConcept;
-	}
-	
 	@Override
 	public String toString() {
 		return value + " -> " + designatedConcept.toString();
@@ -46,12 +41,7 @@ public class Designation {
 		return false;
 	}
 	
-	public int getTimesUserUsedIt() {
-		return timesUserUsedIt;
-	}
-
 	void incrementTimesUserUsedIt() {
 		this.timesUserUsedIt++;
 	}
-
 }

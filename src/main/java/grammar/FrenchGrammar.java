@@ -15,7 +15,7 @@ import grammar.sentence.SimpleSentence;
 import grammar.sentence.StativeSentence;
 import grammar.token.*;
 import grammar.verb.Verb;
-import main.AI;
+import lombok.Getter;
 import output.Translator;
 import simplenlg.features.Feature;
 import simplenlg.features.Form;
@@ -27,11 +27,14 @@ import simplenlg.framework.WordElement;
 import simplenlg.lexicon.Lexicon;
 import simplenlg.phrasespec.VPPhraseSpec;
 import simplenlg.realiser.Realiser;
+import util.VocabRetriever;
 
 import java.rmi.UnexpectedException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+
+import static java.util.stream.Collectors.toList;
 
 //FIXME potential future problem, even if grammar rules as they are now can't make it happen : get/create an entity, add it to newEntities, then rollback because the rule was the wrong one, but the entity is still here. If the sentence ends up correct, there will be a wrong entity added/duplicated. Could be the same with vocab/other things
 
@@ -42,7 +45,9 @@ public class FrenchGrammar {
 
     private Lexicon lexicon;
 
+    @Getter
     private List<Designation> newVocabulary;
+    @Getter
     private List<Entity> newEntities;
     private List<Designation> actualAIVocabulary;
     private List<Entity> actualAIKnownEntities;
@@ -207,20 +212,21 @@ public class FrenchGrammar {
 //                    System.out.println();
 //                }
 
-                Determiner determiner = (Determiner) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), determinerString, Determiner.class);
+                Optional<Determiner> determiner = VocabRetriever.getFirstConceptDesignatedBy(getUpdatedVocabulary(), determinerString, Determiner.class);
+                assert determiner.isPresent();
 
                 List<Adjective> adjectives = new LinkedList<>();
                 for (String s : adjectivesStrings) {
                     String adjectiveBase = getBase(s, LexicalCategory.ADJECTIVE);
-                    Adjective adjectiveConcept = (Adjective) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), adjectiveBase, Adjective.class);
-                    if (adjectiveConcept == null) {
-                        adjectiveConcept = new Adjective();
-                        this.newVocabulary.add(new Designation(adjectiveBase, adjectiveConcept));
+                    Optional<Adjective> adjective = VocabRetriever.getFirstConceptDesignatedBy(getUpdatedVocabulary(), adjectiveBase, Adjective.class);
+                    if (adjective.isEmpty()) {
+                        adjective = Optional.of(new Adjective());
+                        this.newVocabulary.add(new Designation(adjectiveBase, adjective.get()));
                     }
-                    adjectives.add(adjectiveConcept);
+                    adjectives.add(adjective.get());
                 }
 
-                return processCorrespondingEntity(determiner, adjectives, noun);
+                return processCorrespondingEntity(determiner.get(), adjectives, noun);
 
             }
         }
@@ -264,13 +270,13 @@ public class FrenchGrammar {
             String pluralImperative = imperativeOf(baseWord, NumberAgreement.PLURAL);
 
             if (originalString.equals(singularImperative) || originalString.equals(pluralImperative)) {
-                Designation res = AI.getFirstDesignationFrom(getUpdatedVocabulary(), baseWord.getBaseForm(), Verb.class);
-                if (res == null) {
+                Optional<Designation> res = VocabRetriever.getFirstDesignationFrom(getUpdatedVocabulary(), baseWord.getBaseForm(), Verb.class);
+                if (res.isEmpty()) {
                     throw new WrongGrammarRuleException();
                 }
 
-                res.incrementTimesUserUsedIt();
-                return ((Verb) res.getDesignatedConcept());
+                res.get().incrementTimesUserUsedIt();
+                return ((Verb) res.get().getDesignatedConcept());
             } else {
                 throw new WrongGrammarRuleException();
             }
@@ -322,10 +328,14 @@ public class FrenchGrammar {
 
     private EntityInterrogative processCorrespondingEntityInterrogative(String designation) throws WrongGrammarRuleException {
         EntityInterrogative res;
-        AbstractEntityConcept designatedConcept = (AbstractEntityConcept) AI.getFirstConceptDesignatedBy(getUpdatedVocabulary(), getBase(designation, LexicalCategory.PRONOUN), AbstractEntityConcept.class);
+        Optional<AbstractEntityConcept> designatedConcept = VocabRetriever.getFirstConceptDesignatedBy(getUpdatedVocabulary(), getBase(designation, LexicalCategory.PRONOUN), AbstractEntityConcept.class);
 
-        if (designatedConcept instanceof EntityInterrogative) {
-            res = (EntityInterrogative) designatedConcept;
+        if (designatedConcept.isEmpty()) {
+            throw new WrongGrammarRuleException();
+        }
+
+        if (designatedConcept.get() instanceof EntityInterrogative) {
+            res = (EntityInterrogative) designatedConcept.get();
         } else {
             throw new WrongGrammarRuleException();
         }
@@ -352,14 +362,14 @@ public class FrenchGrammar {
      * Returns the entity corresponding to the given parameters if the AI knows about it, or adds an entry with a new entity and/or concept in the new vocabulary/entities otherwise.
      */
     private IEntity processCorrespondingEntity(Determiner determiner, List<Adjective> qualifiers, String nounDesignation) throws CantFindSuchAnEntityException, UnexpectedException {
-        IEntity res = null;
+        IEntity res;
         if (isKnownNoun(nounDesignation)) {
             nounDesignation = getBase(nounDesignation, LexicalCategory.NOUN);
         }
 
-        Designation designation = AI.getFirstDesignationFrom(actualAIVocabulary, nounDesignation, AbstractEntityConcept.class);
+        Optional<Designation> designation = VocabRetriever.getFirstDesignationFrom(actualAIVocabulary, nounDesignation, AbstractEntityConcept.class);
 
-        if (designation == null) { // Unknown word
+        if (designation.isEmpty()) { // Unknown word
             EntityConcept correspondingConcept;
             
             String finalNounDesignation = nounDesignation;
@@ -383,8 +393,8 @@ public class FrenchGrammar {
             res = newEntity;
             this.newEntities.add(newEntity);
         } else {
-            AbstractEntityConcept designatedConcept = (AbstractEntityConcept) designation.getDesignatedConcept();
-            designation.incrementTimesUserUsedIt();
+            AbstractEntityConcept designatedConcept = (AbstractEntityConcept) designation.get().getDesignatedConcept();
+            designation.get().incrementTimesUserUsedIt();
 
             if (designatedConcept instanceof EntityInterrogative) {
                 res = (EntityInterrogative) designatedConcept;
@@ -397,7 +407,7 @@ public class FrenchGrammar {
                 } else if (determiner instanceof DefiniteDeterminer) {
                     res = getLastMentionOfA((EntityConcept) designatedConcept, qualifiers);
                     if (res == null) {
-                        throw new CantFindSuchAnEntityException((EntityConcept) designatedConcept, getDesignationsOf(qualifiers, getUpdatedVocabulary()));
+                        throw new CantFindSuchAnEntityException((EntityConcept) designatedConcept, getDesignationsFor(qualifiers, getUpdatedVocabulary()));
                     }
                 } else {
                     throw new UnexpectedException("There is a 3rd determiner class ? Not expected ! " + determiner);
@@ -435,17 +445,17 @@ public class FrenchGrammar {
         String designation = isKnownVerb(verb) ? getBase(verb, LexicalCategory.VERB) : verb;
 
         Verb res;
-        Designation d = AI.getFirstDesignationFrom(getUpdatedVocabulary(), designation, Verb.class);
+        Optional<Designation> d = VocabRetriever.getFirstDesignationFrom(getUpdatedVocabulary(), designation, Verb.class);
 
-        if (d == null) { // Unknown word
+        if (d.isEmpty()) { // Unknown word
             Verb newConcept = new Verb();
             res = newConcept;
             Designation newDesignation = new Designation(designation, newConcept);
             newDesignation.incrementTimesUserUsedIt();
             newVocabulary.add(newDesignation);
         } else {
-            d.incrementTimesUserUsedIt();
-            res = (Verb) d.getDesignatedConcept();
+            d.get().incrementTimesUserUsedIt();
+            res = (Verb) d.get().getDesignatedConcept();
         }
 
         return res;
@@ -459,14 +469,14 @@ public class FrenchGrammar {
         String designation = isKnownAdjective(adjective) ? getBase(adjective, LexicalCategory.ADJECTIVE) : adjective;
 
         Adjective res;
-        Designation d = AI.getFirstDesignationFrom(getUpdatedVocabulary(), designation, Adjective.class);
+        Optional<Designation> d = VocabRetriever.getFirstDesignationFrom(getUpdatedVocabulary(), designation, Adjective.class);
 
-        if (d == null) { // Unknown word
+        if (d.isEmpty()) { // Unknown word
             Adjective newConcept = new Adjective();
             res = newConcept;
             newVocabulary.add(new Designation(designation, newConcept));
         } else {
-            res = (Adjective) d.getDesignatedConcept();
+            res = (Adjective) d.get().getDesignatedConcept();
         }
 
         return res;
@@ -489,15 +499,13 @@ public class FrenchGrammar {
     }
 
 
-    private static List<String> getDesignationsOf(List<Adjective> adjectives, List<Designation> vocab) {
-        List<String> res = new LinkedList<>();
-
-        for (Designation d : vocab) {
-            if (adjectives.contains(d.getDesignatedConcept())) {
-                res.add(d.getValue());
-            }
-        }
-        return res;
+    private static List<String> getDesignationsFor(List<Adjective> adjectives, List<Designation> vocab) {
+        return vocab
+                .stream()
+                .filter(d -> d.getDesignatedConcept() instanceof Adjective)
+                .filter(d -> adjectives.contains(d.getDesignatedConcept()))
+                .map(Designation::getValue)
+                .collect(toList());
     }
 
 
@@ -568,14 +576,6 @@ public class FrenchGrammar {
      */
     private String getBase(String word, LexicalCategory category) {
         return lexicon.getWordFromVariant(word, category).getBaseForm();
-    }
-
-    public List<Designation> getNewVocabulary() {
-        return this.newVocabulary;
-    }
-
-    public List<Entity> getNewEntities() {
-        return this.newEntities;
     }
 
 

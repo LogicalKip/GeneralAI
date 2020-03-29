@@ -1,20 +1,16 @@
 package grammar;
 
 import grammar.gender.Gender;
+import lombok.Getter;
+import lombok.Setter;
 
-public class NounDesignation extends Designation {
+class NounDesignation extends Designation {
 
-	public NounDesignation(String value, AbstractConcept designatedConcept) {
+	NounDesignation(String value, AbstractConcept designatedConcept) {
 		super(value, designatedConcept);
 	}
 
+	@Getter
+	@Setter
 	private Gender gender;
-	
-	public Gender getGender() {
-		return gender;
-	}
-
-	public void setGender(Gender gender) {
-		this.gender = gender;
-	}
 }

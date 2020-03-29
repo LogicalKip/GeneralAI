@@ -3,10 +3,12 @@ package grammar.sentence;
 import grammar.entity.Entity;
 import grammar.entity.IEntity;
 import grammar.verb.Verb;
+import lombok.Getter;
 
 import java.util.List;
 
 public class DeclarativeSentence extends SimpleSentence {
+	@Getter
 	private IEntity object;
 
 	public DeclarativeSentence(IEntity subject, Verb verb, IEntity object) {
@@ -14,9 +16,8 @@ public class DeclarativeSentence extends SimpleSentence {
 		this.object = object;
 	}
 
-
-	public IEntity getObject() {
-		return object;
+	public DeclarativeSentence(IEntity subject, Verb verb) {
+		this(subject, verb, null);
 	}
 
 	@Override

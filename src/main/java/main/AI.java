@@ -10,6 +10,7 @@ import grammar.sentence.Sentence;
 import grammar.sentence.SimpleSentence;
 import grammar.sentence.StativeSentence;
 import grammar.verb.*;
+import lombok.Getter;
 import module.WikipediaModule;
 import output.Translator;
 import simplenlg.features.Tense;
@@ -23,6 +24,8 @@ import java.util.*;
 
 /**
  * TODO list (sans ordre particulier) :
+ *
+ * Faire de simplenlg un jar
  *
  * quoi [être] [XXXX] ? si ne sait pas, recherche avec WikipediaModule avant de renoncer
  *
@@ -120,11 +123,13 @@ public class AI {
     /**
      * A list of facts learned from the outside
      */
+    @Getter
     private Set<SimpleSentence> knowledge;
     /**
      * The instances of entity we know about. Ex : that cat, that other cat over there, the user.
      * The ones that have been mentioned last must go at the end of the list so that it can be guessed which one the user will be talking about.
      */
+    @Getter
     private List<Entity> entitiesKnown;
     private Scanner kb;
     private boolean stopProgram;
@@ -209,10 +214,6 @@ public class AI {
      */
     private void addBasicKnowledge() {
         // Not much for now !
-    }
-
-    public Set<SimpleSentence> getKnowledge() {
-        return knowledge;
     }
 
     private void obeyOrder(Order order) throws NotEnoughKnowledgeException {
@@ -524,16 +525,14 @@ public class AI {
      * Returns a sentence that means "I don't know", without specifying what
      */
     private SimpleSentence getIDontKnowSentence() {
-        SimpleSentence res = getIKnowSentence();
-        res.setNegative();
-        return res;
+        return getIKnowSentence().negate();
     }
 
     /**
      * Returns a sentence that means "I know", without specifying what
      */
     private SimpleSentence getIKnowSentence() {
-        return new DeclarativeSentence(Myself.getInstance(), Knowing.getInstance(), null);
+        return new DeclarativeSentence(Myself.getInstance(), Knowing.getInstance());
     }
 
     /**
@@ -588,64 +587,7 @@ public class AI {
     }
 
     private String getInput() {
-        String res;
-        res = kb.nextLine();
-
-        return res;
-    }
-
-    /**
-     * Searches the given vocabulary for a classLookedFor object designated by designation. If several exist somehow, return the first.
-     * Returns null if none are found
-     */
-    public static AbstractConcept getFirstConceptDesignatedBy(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
-        AbstractConcept res;
-        List<AbstractConcept> allConcepts = getAllConceptsDesignatedBy(vocabulary, designation, classLookedFor);
-        if (allConcepts.isEmpty()) {
-            res = null;
-        } else {
-            res = allConcepts.get(0);
-        }
-        return res;
-    }
-
-
-    /**
-     * Searches the given vocabulary for all classLookedFor objects designated by designation.
-     * Returns an empty list if none are found
-     */
-    private static List<AbstractConcept> getAllConceptsDesignatedBy(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
-        List<AbstractConcept> res = new LinkedList<>();
-        for (Designation d : getAllDesignationFrom(vocabulary, designation, classLookedFor)) {
-            res.add(d.getDesignatedConcept());
-        }
-        return res;
-    }
-
-    public static Designation getFirstDesignationFrom(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
-        Designation res;
-        List<Designation> allConcepts = getAllDesignationFrom(vocabulary, designation, classLookedFor);
-        if (allConcepts.isEmpty()) {
-            res = null;
-        } else {
-            res = allConcepts.get(0);
-        }
-        return res;
-    }
-
-
-    private static List<Designation> getAllDesignationFrom(final List<Designation> vocabulary, final String designation, final Class<?> classLookedFor) {
-        List<Designation> res = new LinkedList<>();
-        for (Designation d : vocabulary) {
-            if (d.getValue().equals(designation) && classLookedFor.isInstance(d.getDesignatedConcept())) {
-                res.add(d);
-            }
-        }
-        return res;
-    }
-
-    List<Entity> getEntitiesKnown() {
-        return entitiesKnown;
+        return kb.nextLine();
     }
 
     private boolean isOnWindows() {

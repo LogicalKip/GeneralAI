@@ -1,6 +1,8 @@
 package grammar.entity;
 
 import grammar.Adjective;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -10,26 +12,17 @@ import java.util.Set;
  * E.g : Mr snuggles, a specific cat with a white spot on the head, is an {@link Entity}. For the concept of a cat (mammal, small, etc), see {@link EntityConcept}
  */
 public class Entity implements IEntity {
+	@Getter
+	@Setter
 	private EntityConcept concept;
-	
-	private Set<Adjective> characteristics;
 
-	public EntityConcept getConcept() {
-		return concept;
-	}
+	@Getter
+	private Set<Adjective> characteristics;
 
 	public Entity(EntityConcept concept) {
 		super();
 		this.concept = concept;
 		this.characteristics = new HashSet<>();
-	}
-
-	public void setConcept(EntityConcept concept) {
-		this.concept = concept;
-	}
-
-	public Set<Adjective> getCharacteristics() {
-		return characteristics;
 	}
 
 	public void addCharacteristic(Adjective adjective) {

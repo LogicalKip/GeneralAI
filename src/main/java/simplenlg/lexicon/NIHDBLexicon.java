@@ -20,12 +20,11 @@ package simplenlg.lexicon;
 
 import gov.nih.nlm.nls.lexAccess.Api.LexAccessApi;
 import gov.nih.nlm.nls.lexAccess.Api.LexAccessApiResult;
-import gov.nih.nlm.nls.lexCheck.Lib.AdjEntry;
-import gov.nih.nlm.nls.lexCheck.Lib.AdvEntry;
-import gov.nih.nlm.nls.lexCheck.Lib.InflVar;
-import gov.nih.nlm.nls.lexCheck.Lib.LexRecord;
-import gov.nih.nlm.nls.lexCheck.Lib.NounEntry;
-import gov.nih.nlm.nls.lexCheck.Lib.VerbEntry;
+import gov.nih.nlm.nls.lexCheck.Lib.*;
+import simplenlg.features.LexicalFeature;
+import simplenlg.framework.LexicalCategory;
+import simplenlg.framework.NLGElement;
+import simplenlg.framework.WordElement;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -33,11 +32,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
-
-import simplenlg.features.LexicalFeature;
-import simplenlg.framework.LexicalCategory;
-import simplenlg.framework.NLGElement;
-import simplenlg.framework.WordElement;
 
 /**
  * This class gets Words from the NIH Specialist Lexicon

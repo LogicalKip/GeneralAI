@@ -1,15 +1,14 @@
 package grammar.token;
 
+import lombok.Getter;
+
 public class Token {
 
+    @Getter
     protected final String originalString;
 
     public Token(String originalString) {
         this.originalString = originalString;
-    }
-
-    public String getOriginalString() {
-        return originalString;
     }
 
     @Override
