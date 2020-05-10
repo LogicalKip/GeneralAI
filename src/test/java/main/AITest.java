@@ -120,7 +120,9 @@ class AITest {
         ai.parseAndProcessSentence("qui comprend quoi ?");
         answerContainsAll(lastAIAnswer, Arrays.asList("vous comprendriez le principe", "je comprendrais la phrase"));
         ai.parseAndProcessSentence("explique firefox");
-        assertEquals("Mozilla Firefox [mɒˈzɪlə ˈfaɪɚfɑks] est un navigateur web libre et gratuit, développé et distribué par la Mozilla Foundation avec l'aide de milliers de bénévoles, grâce aux méthodes de développement du logiciel libre/open source et à la liberté du code source.", lastAIAnswer);
+        assertTrue(lastAIAnswer.matches("Mozilla Firefox \\[mɒˈzɪlə ˈfaɪɚfɑks] est un navigateur web libre et gratuit, développé et distribué par la Mozilla Foundation avec l'aide de milliers de bénévoles.*développement du logiciel libre/open source .* liberté du code source."));
+        ai.parseAndProcessSentence("arrête");
+        //FIXME add test to start firefox
     }
 
     private void answerContainsAll(String answer, List<String> facts) {

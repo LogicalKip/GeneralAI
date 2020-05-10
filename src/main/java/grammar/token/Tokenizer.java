@@ -16,6 +16,7 @@ public class Tokenizer {
 
     public List<Token> tokenize(String input) {
         List<Token> res = new ArrayList<>();
+        input = input.replaceAll("\\s*'\\s*", "'");
         for (String stringTrimmed : input.trim().split(" +")) {
             String[] split = stringTrimmed.split("(?<![.!;?])(?=[.!;?])|(?<=')"); // Splits before strings of punctuation "??" and after quotes
             for (String currentString : split) {

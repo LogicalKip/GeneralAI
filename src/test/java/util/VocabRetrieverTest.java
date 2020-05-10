@@ -24,17 +24,17 @@ class VocabRetrieverTest {
         AbstractConcept c3 = new Adjective();
         AbstractConcept c4 = new Verb(false, false);
         vocabulary = List.of(
-                new Designation("canMeanToThings", c1),
+                new Designation("canMeanTwoThings", c1),
                 new Designation("normalCase", c2),
                 new Designation("d3", c3),
                 new Designation("secondDesignation", c1),
-                new Designation("canMeanToThings", c4),
+                new Designation("canMeanTwoThings", c4),
                 new Designation("d4", c4));
     }
 
     @Test
     void getFirstConceptDesignatedBy() {
-        assertEquals(c1, VocabRetriever.getFirstConceptDesignatedBy(vocabulary, "canMeanToThings", AbstractConcept.class).get());
+        assertEquals(c1, VocabRetriever.getFirstConceptDesignatedBy(vocabulary, "canMeanTwoThings", AbstractConcept.class).get());
         assertEquals(c2, VocabRetriever.getFirstConceptDesignatedBy(vocabulary, "normalCase", AbstractConcept.class).get());
         assertEquals(c1, VocabRetriever.getFirstConceptDesignatedBy(vocabulary, "secondDesignation", AbstractConcept.class).get());
         assertEquals(Optional.empty(), VocabRetriever.getFirstConceptDesignatedBy(vocabulary, "nonexistent", AbstractConcept.class));
@@ -42,5 +42,14 @@ class VocabRetrieverTest {
 
     @Test
     void getFirstDesignationFrom() {
+        Designation t1 = VocabRetriever.getFirstDesignationFrom(vocabulary, "canMeanTwoThings", AbstractConcept.class).get();
+        assertEquals(c1, t1.getDesignatedConcept());
+        assertEquals("canMeanTwoThings", t1.getValue());
+        Designation t2 = VocabRetriever.getFirstDesignationFrom(vocabulary, "normalCase", AbstractConcept.class).get();
+        assertEquals(c2, t2.getDesignatedConcept());
+        assertEquals("normalCase", t2.getValue());
+        Designation t3 = VocabRetriever.getFirstDesignationFrom(vocabulary, "secondDesignation", AbstractConcept.class).get();
+        assertEquals("secondDesignation", t3.getValue());
+        assertEquals(Optional.empty(), VocabRetriever.getFirstDesignationFrom(vocabulary, "nonexistent", AbstractConcept.class));
     }
 }

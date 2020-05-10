@@ -3,7 +3,10 @@ package main;
 import exceptions.CantFindSuchAnEntityException;
 import exceptions.NotEnoughKnowledgeException;
 import exceptions.WrongGrammarRuleException;
-import grammar.*;
+import grammar.Designation;
+import grammar.FrenchGrammar;
+import grammar.InterrogativeWord;
+import grammar.Order;
 import grammar.entity.*;
 import grammar.sentence.DeclarativeSentence;
 import grammar.sentence.Sentence;
@@ -246,7 +249,7 @@ public class AI {
         }
     }
 
-    private void startSoftware(String software) throws NotEnoughKnowledgeException {
+    private void startSoftware(String software) {
         if (software == null) {
             say(getStartWhatSentence());
         } else {

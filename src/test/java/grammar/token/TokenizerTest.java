@@ -18,17 +18,17 @@ class TokenizerTest {
     }
 
     @Test
-    void apostrophe() {//FIXME handle "l ' oiseau" ?? and "n ' est"
+    void apostrophe() {
         List<Token> expected = Arrays.asList(
                 new DeterminerToken("l'"),
                 new NounToken("homme"),
                 new VerbToken("regarde"),
                 new DeterminerToken("l'"),
                 new NounToken("oiseau"));
-        List<Token> actual = tokenizer.tokenize("   l'  homme regarde  l'oiseau  ");
-        assertEquals(expected, actual);
+        assertEquals(expected, tokenizer.tokenize("l'homme regarde l'oiseau  "));
+        assertEquals(expected, tokenizer.tokenize("   l '  homme regarde  l  'oiseau  "));
+        assertEquals(expected, tokenizer.tokenize("l'  homme regarde  l  '  oiseau"));
 
-        actual = tokenizer.tokenize("le chat n'est pas quoi ?!?");
         expected = Arrays.asList(
                 new MiscToken("le"), // Misc because it can be determiner or pronoun : "le chat" and "il le regarde"
                 new NounToken("chat"),
@@ -37,6 +37,8 @@ class TokenizerTest {
                 new MiscToken("pas"),
                 new PronounToken("quoi"),
                 new QuestionMarkToken("?!?"));
-        assertEquals(expected, actual);
+        assertEquals(expected, tokenizer.tokenize("le chat n'est pas quoi ?!?"));
+        assertEquals(expected, tokenizer.tokenize("le chat n 'est pas quoi ?!?"));
+        assertEquals(expected, tokenizer.tokenize("le chat n'  est pas quoi ?!?"));
     }
 }
