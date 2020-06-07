@@ -4,6 +4,7 @@
       <root url="jar://$PROJECT_DIR$/lib/lexAccess2011dist.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/lvg2011api.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/lexCheck2006api.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/simplenlg.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
