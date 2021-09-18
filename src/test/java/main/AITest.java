@@ -16,7 +16,10 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 
@@ -35,6 +38,7 @@ class AITest {
         }).when(translator).say(anyString());
 
         ai = new AI(translator);
+
     }
 
     @Test
@@ -120,7 +124,7 @@ class AITest {
         ai.parseAndProcessSentence("qui comprend quoi ?");
         answerContainsAll(lastAIAnswer, Arrays.asList("vous comprendriez le principe", "je comprendrais la phrase"));
         ai.parseAndProcessSentence("explique firefox");
-        assertTrue(lastAIAnswer.matches("Mozilla Firefox \\[mɒˈzɪlə ˈfaɪɚfɑks] est un navigateur web libre et gratuit, développé et distribué par la Mozilla Foundation avec l'aide de milliers de bénévoles.*développement du logiciel libre/open source .* liberté du code source."));
+        assertTrue(lastAIAnswer.matches("Mozilla Firefox.*navigateur.*"));
         ai.parseAndProcessSentence("arrête");
         //FIXME add test to start firefox
     }

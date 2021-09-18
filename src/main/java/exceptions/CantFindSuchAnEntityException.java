@@ -10,17 +10,17 @@ import java.util.List;
  */
 public class CantFindSuchAnEntityException extends Exception {
 
-	private static final long serialVersionUID = 1548727791539077399L;
+    private static final long serialVersionUID = 1548727791539077399L;
 
-	@Getter
-	private EntityConcept concept;
-	@Getter
-	private List<String> qualifiers;
-	
-	
-	public CantFindSuchAnEntityException(EntityConcept concept, List<String> qualifiers) {
-		super();
-		this.concept = concept;
-		this.qualifiers = qualifiers;
-	}
+    @Getter
+    private final EntityConcept concept;
+    @Getter
+    private final List<String> qualifiers;
+
+
+    public CantFindSuchAnEntityException(EntityConcept concept, List<String> qualifiers) {
+        super();
+        this.concept = concept;
+        this.qualifiers = qualifiers;
+    }
 }

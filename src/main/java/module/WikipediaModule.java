@@ -1,11 +1,18 @@
 package module;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
+import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
 
+@RequiredArgsConstructor
 public class WikipediaModule {
+
+    private final WikipediaClient wikipediaClient;
+
+    public WikipediaModule() {
+        this.wikipediaClient = new WikipediaClient();
+    }
+
 
     //FIXME
     // remove [quand ?] [ref souhaitée] etc ex firefox, end of paragraph
@@ -18,25 +25,13 @@ public class WikipediaModule {
     latin as a subtitle (ex : fr chat)
      */
 
-    private String getWikipediaUrl(String wordSearchedFor, String language) {
-        return String.format("http://%s.wikipedia.org/w/api.php?action=query&prop=extracts&format=xml&exintro=&explaintext=&titles=%s&redirects=", language, wordSearchedFor);
-    }
-
-    String getFirstWikiParagraph(String word, String language) throws IOException {
-        Document doc = Jsoup.connect(getWikipediaUrl(joinMultipleWords(word), language)).get();
-        return doc.select("extract").text();
-    }
-
-    String joinMultipleWords(String words) {
-        return String.join("_", words.split(" "));
-    }
 
     String getFirstSentence(String paragraph) {
         return paragraph.replaceAll("(.*?[a-zà-ÿ\\d][.;](?= [A-ZÀ-Ÿ]|$)).*", "$1");// Ends at the first lower+dot+space+upper and discards the space+upper
     }
 
     public String getDefinition(String word, String language) throws IOException {
-        String paragraph = getFirstWikiParagraph(joinMultipleWords(word), language);
+        String paragraph = wikipediaClient.getFirstWikiParagraph(word, language);
         return getFirstSentence(paragraph);
     }
 }

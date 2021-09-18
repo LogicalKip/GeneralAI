@@ -47,6 +47,7 @@ public class Tokenizer {
                 res.add(token);
             }
         }
+        res.add(new EndOfInputToken("EOI"));
         return res;
     }
 

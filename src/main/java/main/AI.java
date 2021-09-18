@@ -7,12 +7,23 @@ import grammar.Designation;
 import grammar.FrenchGrammar;
 import grammar.InterrogativeWord;
 import grammar.Order;
-import grammar.entity.*;
+import grammar.entity.Entity;
+import grammar.entity.EntityConcept;
+import grammar.entity.EntityInterrogative;
+import grammar.entity.IEntity;
+import grammar.entity.Myself;
 import grammar.sentence.DeclarativeSentence;
 import grammar.sentence.Sentence;
 import grammar.sentence.SimpleSentence;
 import grammar.sentence.StativeSentence;
-import grammar.verb.*;
+import grammar.verb.Be;
+import grammar.verb.Explain;
+import grammar.verb.HasSameMeaningAs;
+import grammar.verb.Knowing;
+import grammar.verb.StartSoftware;
+import grammar.verb.Stop;
+import grammar.verb.Understand;
+import grammar.verb.Verb;
 import lombok.Getter;
 import module.WikipediaModule;
 import output.Translator;
@@ -23,92 +34,95 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.rmi.UnexpectedException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Scanner;
+import java.util.Set;
 
 /**
  * TODO list (sans ordre particulier) :
- *
- * Faire de simplenlg un jar
- *
+ * <p>
  * quoi [être] [XXXX] ? si ne sait pas, recherche avec WikipediaModule avant de renoncer
- *
+ * <p>
  * apprentissage récursif sur wikipédia
- *
+ * <p>
  * le chat qui mange la souris mange quoi ?
- *
+ * <p>
  * catch outOfBoundseXception si pas assez de token pour une règle (rediriger vers la prochain regle ?)
- *
+ * <p>
  * phrases d'état : pas besoin que la phrase avec "être" soit dans les faits. "le chat est quoi/petit ?" il faut aussi regarder dans les entités connues et leurs adjectifs quand c'est le verbe être
- *
+ * <p>
  * pronoms personnels COD (le chat te regarde)
- *
+ * <p>
  * réponses contextuelles, peut-être le matou mange quoi -> je ne sais pas, jamais entendu parler de matou -> matou signifie chat/un chat est un animal/etc, dans ce cas, le matou mange la souris. Une liste de questions auxquelles on a répondu "je ne sais pas" (avec : au fait, maintenant je sais que X mange Y) ?
- *
+ * <p>
  * Liste de synonymes pour traiter "signifie" ? ça aiderait aussi pour "x signifie y ?" (x,y € {chat, quoi})
- *
+ * <p>
  * si on autorise les mots absents du lexique (grâce à leur position), comment connaitre leurs bases, conjugaisons, pluriels, etc ?
- *
+ * <p>
  * il faudrait déplacer "User" et "AI" (.instance()) dans entitiesKnown. Nécessaire pour "tu es grand. qui est grand ?"
- *
+ * <p>
  * mergeEntities : adjectifs à fusionner
- *
+ * <p>
  * tu/le chat est quoi ? -> quelle_entité et quel_adjectif
- *
+ * <p>
  * pronom personnel 3ème personne
- *
+ * <p>
  * dire monsieur aléatoirement au lieu de tout le temps
- *
+ * <p>
  * où gérer les getXXXSentence plus proprement (sans faire plein d'aller-retours entre classes, si possible) ? Une factory ?
- *
+ * <p>
  * pluriel
- *
+ * <p>
  * ordres négatifs ?
- *
+ * <p>
  * oui/non comme concepts. à utiliser lors de la réponse à une yesNo question
- * 
+ * <p>
  * faire en sorte que les say en dur soient des Sentence créées dynamiquement, comme pour "je ne sais pas"
- * 
+ * <p>
  * phrases négatives : vérification des incohérences (que faire si ça arrive ?) (on risque aussi de mergeEntities 2 entités qui possèdent des phrases mutuellement exclusives)
- * 
+ * <p>
  * factoriser les messages de NotEnoughKnowledgeException (dans le constructeur) à partir du concept dont la designation est manquante
- * 
+ * <p>
  * wiki github pour expliquer les différents cas d'utilisation, limitations selon les OS, installation
- * 
- * source d'erreur possible dans la grammaire : ça commence par marcher, on crée une entité ou du vocabulaire (dans la liste "newXXX"), puis la suite ne colle pas, donc on revient en arrière, on essaie avec une autre règle, elle marche, on recrée l'entite/vocab, elle marche jusqu'au bout et tout finit bien, mais on a deux fois l'entité/vocab dans la liste (voire deux légèrement différentes, dont une fausse). Faut-il réinitialiser les listes à chaque WrongGrammarRuleException (par exemple, en le forçant, en devant passer les listes au constructeur, qui les vide) ? Il faut rollback completement, aller dans une mauvais règle ne devrait avoir aucune influence. être ~LL(1) règle (peut-être ?) ça, mais la grammaire ne le restera pas forcément éternellement
- * 
+ * <p>
+ * source d'erreur possible dans la grammaire : ça commence par marcher, on crée une entité ou du vocabulaire (dans la liste "newXXX"), puis la suite ne colle pas, donc on revient en arrière, on essaie avec une autre règle, elle marche, on recrée l'entite/vocab, elle marche jusqu'au bout et tout finit bien, mais on a deux fois l'entité/vocab dans la liste (voire deux légèrement différentes, dont une fausse). Faut-il réinitialiser les listes à chaque WrongGrammarRuleException (par exemple, en le forçant, en devant passer les listes au constructeur, qui les vide) ? Il faut rollback completement, aller dans une mauvaise règle ne devrait avoir aucune influence. être ~LL(1) règle (peut-être ?) ça, mais la grammaire ne le restera pas forcément éternellement
+ * <p>
  * signifie pourrait avoir plusieurs sens :
  * ce chat est le même animal que cet autre chat
  * les chats et les minets, c'est le même concept
- * 
+ * <p>
  * Order utilise des ~Entity au lieu de String.
  * Noms propres
- * 
+ * <p>
  * "Il y a" + new entity
- * 
+ * <p>
  * "est le contraire de" (adjectifs). Ensuite, répondre aux questions en prenant en compte les contraires pour déduire (pas vivant = mort)
- * 
+ * <p>
  * pas de déterminant -> on fait référence au concept (?) (matou signifie chat). Une différence avec déterminant ?
- * 
+ * <p>
  * Changer la voix passive selon ce qui était demandé (p.setFeature(Feature.PASSIVE, true);) ? : (qui mange la pomme vs john mange quoi) Passive (eg, "John eats an apple" vs "An apple is eaten by John")
- * 
+ * <p>
  * plusieurs faits dans une phrase (ET, virgule)
- * 
+ * <p>
  * besoin de equals() dans certaines classes de grammaire ?
- * 
+ * <p>
  * faire de vocabulary une map <designation->Concept> ?
- * 
+ * <p>
  * "ces deux instances d'animaux sont la même boule de poils" alors que l'une est un chat et l'autre un cheval
- * 
+ * <p>
  * héritage de concepts. chat_5=instance de chat, qui est un mammifère, qui est un animal, qui est un être vivant
- * 
+ * <p>
  * faire des interfaces au lieu de classes pour les concepts pour qu'un mot puisse en etre plusieurs à la fois ?
- *
+ * <p>
  * si l'utilisateur utilise des verbes d'état (Stative) inconnus, suivis d'un adjectif comme prévu, devrait-on les reconnaitre comme tels (Verb.IS_STATIVE_VERB = true), et rajouter la phrase dans la liste des faits (et bien sûr aucun lien concernant l'adjectif et l'entité, car ce verbe n'a aucun sens pour l'ia) ?
- * 
+ * <p>
  * passer la phrase en .lower() ? (pb avec noms propres plus tard ?)
- *     
+ * <p>
  * A debugger :
- * 
+ * <p>
  * ex-problème datant de stanford, qui pourrait se reposer quand on autorisera des mots absents du lexique, en en déduisant le type selon la position
  * [AI] Initializing...
  * [AI] Ready.
@@ -117,7 +131,7 @@ import java.util.*;
  * qui mange quoi ?
  * [AI] Le chat blanc mangerait **le** croquette.
  * car le mot n'est pas dans le lexique. Même en demandant un "la", ça met un "le" par défaut car le genre n'est pas connu dans le lexique je suppose
- * 
+ * <p>
  * qui est pas quoi ?
  * (probleme car "être" suppose un adjectif, tel que codé actuellement, alors que "quoi" représente WHAT_ENTITY, on n'a pas de WHAT_ADJECTIVE)
  */
@@ -127,18 +141,18 @@ public class AI {
      * A list of facts learned from the outside
      */
     @Getter
-    private Set<SimpleSentence> knowledge;
+    private final Set<SimpleSentence> knowledge;
     /**
      * The instances of entity we know about. Ex : that cat, that other cat over there, the user.
      * The ones that have been mentioned last must go at the end of the list so that it can be guessed which one the user will be talking about.
      */
     @Getter
-    private List<Entity> entitiesKnown;
-    private Scanner kb;
+    private final List<Entity> entitiesKnown;
+    private final Scanner kb;
+    private final Translator translator;
+    private final FrenchGrammar parser;
+    private final WikipediaModule wikipediaModule;
     private boolean stopProgram;
-    private Translator translator;
-    private FrenchGrammar parser;
-    private WikipediaModule wikipediaModule;
 
     public AI(Translator translator) {
         this.translator = translator;
@@ -171,9 +185,9 @@ public class AI {
             if (parsedInput instanceof Order) {
                 obeyOrder((Order) parsedInput);
             } else if (parsedInput instanceof SimpleSentence) {
-                this.translator.getVocabulary().addAll(parser.getNewVocabulary());
+                this.translator.getVocabulary().addAll(FrenchGrammar.getNewVocabulary());
 
-                processSimpleSentenceFromUser((SimpleSentence) parsedInput, parser.getNewEntities());
+                processSimpleSentenceFromUser((SimpleSentence) parsedInput, FrenchGrammar.getNewEntities());
             }
         } catch (NotEnoughKnowledgeException e) {
             say(e.getMessage());
@@ -183,6 +197,7 @@ public class AI {
             say(getIDontUnderstandSentence());
         } catch (UnexpectedException e) {
             e.printStackTrace();
+            assert false;
         }
     }
 

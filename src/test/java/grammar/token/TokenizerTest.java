@@ -7,7 +7,7 @@ import output.FrenchTranslator;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TokenizerTest {
     private Tokenizer tokenizer;
@@ -24,7 +24,8 @@ class TokenizerTest {
                 new NounToken("homme"),
                 new VerbToken("regarde"),
                 new DeterminerToken("l'"),
-                new NounToken("oiseau"));
+                new NounToken("oiseau"),
+                new EndOfInputToken("EOI"));
         assertEquals(expected, tokenizer.tokenize("l'homme regarde l'oiseau  "));
         assertEquals(expected, tokenizer.tokenize("   l '  homme regarde  l  'oiseau  "));
         assertEquals(expected, tokenizer.tokenize("l'  homme regarde  l  '  oiseau"));
@@ -36,7 +37,8 @@ class TokenizerTest {
                 new VerbToken("est"),
                 new MiscToken("pas"),
                 new PronounToken("quoi"),
-                new QuestionMarkToken("?!?"));
+                new QuestionMarkToken("?!?"),
+                new EndOfInputToken("EOI"));
         assertEquals(expected, tokenizer.tokenize("le chat n'est pas quoi ?!?"));
         assertEquals(expected, tokenizer.tokenize("le chat n 'est pas quoi ?!?"));
         assertEquals(expected, tokenizer.tokenize("le chat n'  est pas quoi ?!?"));

@@ -6,7 +6,13 @@ import grammar.Adjective;
 import grammar.Designation;
 import grammar.determiner.DefiniteDeterminer;
 import grammar.determiner.IndefiniteDeterminer;
-import grammar.entity.*;
+import grammar.entity.AbstractEntityConcept;
+import grammar.entity.Entity;
+import grammar.entity.EntityConcept;
+import grammar.entity.EntityInterrogative;
+import grammar.entity.IEntity;
+import grammar.entity.Myself;
+import grammar.entity.User;
 import grammar.sentence.DeclarativeSentence;
 import grammar.sentence.SimpleSentence;
 import grammar.sentence.StativeSentence;
@@ -14,8 +20,17 @@ import grammar.verb.StartSoftware;
 import grammar.verb.Stop;
 import grammar.verb.Understand;
 import lombok.Getter;
-import simplenlg.features.*;
-import simplenlg.framework.*;
+import simplenlg.features.Feature;
+import simplenlg.features.Form;
+import simplenlg.features.InterrogativeType;
+import simplenlg.features.NumberAgreement;
+import simplenlg.features.Person;
+import simplenlg.features.Tense;
+import simplenlg.framework.CoordinatedPhraseElement;
+import simplenlg.framework.LexicalCategory;
+import simplenlg.framework.NLGElement;
+import simplenlg.framework.NLGFactory;
+import simplenlg.framework.WordElement;
 import simplenlg.lexicon.Lexicon;
 import simplenlg.phrasespec.NPPhraseSpec;
 import simplenlg.phrasespec.SPhraseSpec;
@@ -23,7 +38,11 @@ import simplenlg.phrasespec.VPPhraseSpec;
 import simplenlg.realiser.Realiser;
 import util.VocabRetriever;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Turns the internal, abstract concepts of the AI in something readable to the user.
@@ -31,13 +50,12 @@ import java.util.*;
  */
 public abstract class Translator {
     @Getter
-    protected List<Designation> vocabulary;
-
-    @Getter
     private final String languageName;
+    private final NLGFactory nlgFactory;
+    private final Realiser realiser;
+    @Getter
+    protected List<Designation> vocabulary;
     private Lexicon lexicon;
-    private NLGFactory nlgFactory;
-    private Realiser realiser;
 
 
     /**
@@ -51,6 +69,40 @@ public abstract class Translator {
         this.addBasicVocabulary();
         this.nlgFactory = new NLGFactory(lexicon);
         this.realiser = new Realiser();
+    }
+
+    /**
+     * Returns "you" (the subject one) in the current language
+     */
+    public static String getBaseSecondSingularPersonalPronoun(Lexicon lexicon) {
+        return getBaseSingularPersonalPronoun(lexicon, Person.SECOND);
+    }
+
+    /**
+     * Returns "I" in the current language
+     */
+    public static String getBaseFirstSingularPersonalPronoun(Lexicon lexicon) {
+        return getBaseSingularPersonalPronoun(lexicon, Person.FIRST);
+    }
+
+    private static String getBaseSingularPersonalPronoun(Lexicon lexicon, Person p) {
+        Map<String, Object> features = new HashMap<>();
+        features.put(Feature.NUMBER, NumberAgreement.SINGULAR);
+        features.put(Feature.PERSON, p);
+
+        WordElement pronoun = lexicon.getWord(LexicalCategory.PRONOUN, features);
+
+        return pronoun.getBaseForm();
+    }
+
+    static String getBasePluralPersonalPronoun(Lexicon lexicon, Person p) {
+        Map<String, Object> features = new HashMap<>();
+        features.put(Feature.NUMBER, NumberAgreement.PLURAL);
+        features.put(Feature.PERSON, p);
+
+        WordElement pronoun = lexicon.getWord(LexicalCategory.PRONOUN, features);
+
+        return pronoun.getBaseForm();
     }
 
     /**
@@ -70,7 +122,6 @@ public abstract class Translator {
     public void say(String stringToSay) {
         System.out.println("[AI] " + stringToSay);
     }
-
 
     /**
      * Display an abstract sentence in a way the user can understand, thanks to the language provided by the subclass
@@ -161,7 +212,6 @@ public abstract class Translator {
         return res;
     }
 
-
     /**
      * More or less toString() in the current language
      *
@@ -223,7 +273,6 @@ public abstract class Translator {
     private String computeEntityString(IEntity entityParam) {
         return computeEntityString(entityParam, true);
     }
-
 
     /**
      * Returns a determiner, definite or not
@@ -295,41 +344,6 @@ public abstract class Translator {
         } else {
             return d.get(0);
         }
-    }
-
-    /**
-     * Returns "you" (the subject one) in the current language
-     */
-    public static String getBaseSecondSingularPersonalPronoun(Lexicon lexicon) {
-        return getBaseSingularPersonalPronoun(lexicon, Person.SECOND);
-    }
-
-    /**
-     * Returns "I" in the current language
-     */
-    public static String getBaseFirstSingularPersonalPronoun(Lexicon lexicon) {
-        return getBaseSingularPersonalPronoun(lexicon, Person.FIRST);
-    }
-
-
-    private static String getBaseSingularPersonalPronoun(Lexicon lexicon, Person p) {
-        Map<String, Object> features = new HashMap<>();
-        features.put(Feature.NUMBER, NumberAgreement.SINGULAR);
-        features.put(Feature.PERSON, p);
-
-        WordElement pronoun = lexicon.getWord(LexicalCategory.PRONOUN, features);
-
-        return pronoun.getBaseForm();
-    }
-
-    static String getBasePluralPersonalPronoun(Lexicon lexicon, Person p) {
-        Map<String, Object> features = new HashMap<>();
-        features.put(Feature.NUMBER, NumberAgreement.PLURAL);
-        features.put(Feature.PERSON, p);
-
-        WordElement pronoun = lexicon.getWord(LexicalCategory.PRONOUN, features);
-
-        return pronoun.getBaseForm();
     }
 
     /**
