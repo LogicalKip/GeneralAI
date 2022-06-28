@@ -38,7 +38,6 @@ class AITest {
         }).when(translator).say(anyString());
 
         ai = new AI(translator);
-
     }
 
     @Test
@@ -125,6 +124,8 @@ class AITest {
         answerContainsAll(lastAIAnswer, Arrays.asList("vous comprendriez le principe", "je comprendrais la phrase"));
         ai.parseAndProcessSentence("explique firefox");
         assertTrue(lastAIAnswer.matches("Mozilla Firefox.*navigateur.*"));
+        ai.parseAndProcessSentence("Et pour une phrase un peu trop complexe ?");
+        assertEquals("Je ne comprends pas, monsieur.", lastAIAnswer);
         ai.parseAndProcessSentence("arrête");
         //FIXME add test to start firefox
     }

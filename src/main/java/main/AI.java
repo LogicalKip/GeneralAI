@@ -150,7 +150,7 @@ public class AI {
     private final List<Entity> entitiesKnown;
     private final Scanner kb;
     private final Translator translator;
-    private final FrenchGrammar parser;
+    private final FrenchGrammar grammar;
     private final WikipediaModule wikipediaModule;
     private boolean stopProgram;
 
@@ -163,7 +163,7 @@ public class AI {
         this.wikipediaModule = new WikipediaModule();
         this.stopProgram = false;
         this.entitiesKnown = new LinkedList<>();
-        this.parser = new FrenchGrammar(this.translator.getXMLLexicon(), this.translator.getVocabulary(), this.entitiesKnown);
+        this.grammar = new FrenchGrammar(this.translator.getXMLLexicon(), this.translator.getVocabulary(), this.entitiesKnown);
 
         kb = new Scanner(System.in);
     }
@@ -180,7 +180,7 @@ public class AI {
 
     void parseAndProcessSentence(String input) {
         try {
-            Sentence parsedInput = parser.parse(input);
+            Sentence parsedInput = grammar.parse(input);
 
             if (parsedInput instanceof Order) {
                 obeyOrder((Order) parsedInput);
@@ -447,7 +447,7 @@ public class AI {
                 }
             }
         } else {
-            System.err.println("Can't answer what is not a question. Should never happen :/");
+            say("Can't answer what is not a question. Should never happen :/");
         }
     }
 
@@ -484,7 +484,7 @@ public class AI {
         }
     }
 
-    private void respondWithSynonymsOf(Entity entity, boolean questionWasNegative) {
+    private void respondWithSynonymsOf(Entity entity, boolean questionWasNegative) {//FIXME UT for all those cases
         if (questionWasNegative) {
             say("Beaucoup de choses, je le crains.");
         } else {
@@ -562,13 +562,13 @@ public class AI {
         return res;
     }
 
-    private SimpleSentence getStartWhatSentence() {
+    private SimpleSentence getStartWhatSentence() { // FIXME UT
         return getVerbWhatSentence(StartSoftware.getInstance());
     }
 
     private SimpleSentence getExplainWhatSentence() {
         return getVerbWhatSentence(Explain.getInstance());
-    }
+    }// FIXME UT
 
     private SimpleSentence getIStopMyselfSentence() {
         return new DeclarativeSentence(Myself.getInstance(), Stop.getInstance(), Myself.getInstance());

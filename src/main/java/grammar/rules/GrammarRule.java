@@ -2,11 +2,12 @@ package grammar.rules;
 
 import exceptions.CantFindSuchAnEntityException;
 import exceptions.WrongGrammarRuleException;
-import grammar.FrenchGrammar;
+import grammar.Designation;
+import grammar.entity.Entity;
 import grammar.sentence.Sentence;
 import grammar.token.EndOfInputToken;
 import grammar.token.Token;
-import simplenlg.framework.WordElement;
+import lombok.Getter;
 
 import java.rmi.UnexpectedException;
 import java.util.List;
@@ -21,6 +22,11 @@ public abstract class GrammarRule {
     protected Token currentToken;
     private int currentTokenIndex;
 
+    @Getter
+    private List<Designation> newVocabulary;
+    @Getter
+    private List<Entity> newEntities;
+
     /**
      * First rule doesn't work like the others since it has no parent.
      * Throws {@link WrongGrammarRuleException} if it can't completely succeed or if there are still tokens left after parsing.
@@ -30,7 +36,7 @@ public abstract class GrammarRule {
             @Override
             protected Object internalApply() throws WrongGrammarRuleException, CantFindSuchAnEntityException, UnexpectedException {
                 Sentence res = (Sentence) new MainRule().apply(this);
-                if (!usedAllTokens()) {
+                if (didNotUseAllTokens()) {
                     fail();
                 }
                 return res;
@@ -70,29 +76,11 @@ public abstract class GrammarRule {
         setToken(currentTokenIndex + 1);
     }
 
-    protected final boolean usedAllTokens() {
-        return currentToken instanceof EndOfInputToken;
+    protected final boolean didNotUseAllTokens() {
+        return !(currentToken instanceof EndOfInputToken);
     }
 
     protected final void fail() throws WrongGrammarRuleException {
         throw new WrongGrammarRuleException();
     }
-
-
-    /**
-     * Returns true if at least one of the possible words corresponding to the token's original string is a 'category'
-     * Ex : if that specific spelling ("souris") is sometimes that of an noun, sometimes of a verb, then canBeA(noun) and also canBeA(verb)
-     *
-     * @param category using the string NLG uses for its category
-     */
-    protected final boolean canBeA(String category, Token token) {
-        for (WordElement word : FrenchGrammar.getLexicon().getWordsFromVariant(token.getOriginalString())) {
-            if (word.getCategory().toString().equals(category)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
 }

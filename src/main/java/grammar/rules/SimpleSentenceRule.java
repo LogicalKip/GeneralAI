@@ -62,8 +62,8 @@ public class SimpleSentenceRule extends GrammarRule {
             nextToken();
         }
 
-        SimpleSentence sentence;
         Verb verb = processCorrespondingVerb(verbString);
+        SimpleSentence sentence;
 
         if (verb.IS_STATIVE_VERB) {
             sentence = handleStativeVerb(subject, verb);
@@ -88,7 +88,7 @@ public class SimpleSentenceRule extends GrammarRule {
 
     private SimpleSentence handleStativeVerb(IEntity subject, Verb verb) throws WrongGrammarRuleException {
         SimpleSentence sentence;
-        if (! canBeAdjective(currentToken)) {
+        if (!canBeAdjective(currentToken)) {
             fail();
         }
         sentence = new StativeSentence(subject, verb, processCorrespondingAdjective(currentToken.getOriginalString()));
@@ -122,7 +122,7 @@ public class SimpleSentenceRule extends GrammarRule {
                     x.incrementTimesUserUsedIt();
                     return (Verb) x.getDesignatedConcept();
                 })
-                .orElse(handleNewVerb(base));
+                .orElseGet(() -> handleNewVerb(base));//FIXME UT to test that it's not orElse() (check that no side effect in cases where the orElse isn't needed)
     }
 
     private Verb handleNewVerb(String designation) {
@@ -143,7 +143,7 @@ public class SimpleSentenceRule extends GrammarRule {
 
         return designation
                 .map(x -> ((Adjective) x.getDesignatedConcept()))
-                .orElse(handleNewAdjective(base));
+                .orElseGet(() -> handleNewAdjective(base));//FIXME UT to test that it's not orElse() (check that no side effect in cases where the orElse isn't needed)
     }
 
     private Adjective handleNewAdjective(String base) {

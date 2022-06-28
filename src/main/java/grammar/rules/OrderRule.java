@@ -30,7 +30,7 @@ public class OrderRule extends GrammarRule {
 
         String object = null;
 
-        if (!this.usedAllTokens()) {
+        if (didNotUseAllTokens()) {
             object = currentToken.getOriginalString();
             nextToken();
         }
